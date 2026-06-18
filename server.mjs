@@ -1,12 +1,14 @@
 import { createServer } from 'node:http'
-import { readFile, writeFile, stat, mkdir } from 'node:fs/promises'
+import { copyFile, readdir, readFile, writeFile, stat, mkdir } from 'node:fs/promises'
 import { createReadStream } from 'node:fs'
 import { extname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 const dataDir = join(root, 'data')
+const demoDataDir = join(root, 'demo-data', 'sample')
 const logoDir = join(dataDir, 'logos')
+const demoLogoDir = join(demoDataDir, 'logos')
 const distDir = join(root, 'dist')
 const port = Number(process.env.PORT || 8787)
 const priceCache = new Map()
@@ -22,6 +24,43 @@ const mimeTypes = {
   '.ico': 'image/x-icon',
   '.json': 'application/json; charset=utf-8',
   '.webp': 'image/webp',
+}
+
+async function pathExists(filePath) {
+  try {
+    await stat(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function copyIfMissing(sourcePath, targetPath) {
+  if (await pathExists(targetPath)) return false
+  await copyFile(sourcePath, targetPath)
+  return true
+}
+
+async function ensureLocalDataFiles() {
+  await mkdir(dataDir, { recursive: true })
+  await mkdir(logoDir, { recursive: true })
+
+  await Promise.all([
+    copyIfMissing(join(demoDataDir, 'settings.json'), join(dataDir, 'settings.json')),
+    copyIfMissing(join(demoDataDir, 'positions.csv'), join(dataDir, 'positions.csv')),
+    copyIfMissing(join(demoDataDir, 'performance.csv'), join(dataDir, 'performance.csv')),
+  ])
+
+  try {
+    const demoLogoFiles = await readdir(demoLogoDir)
+    await Promise.all(
+      demoLogoFiles.map((fileName) =>
+        copyIfMissing(join(demoLogoDir, fileName), join(logoDir, fileName)),
+      ),
+    )
+  } catch {
+    // Demo logos are optional; missing logos can still be fetched and cached on demand.
+  }
 }
 
 function sendJson(response, status, payload) {
@@ -502,6 +541,7 @@ function consolidatePositions(positions, prices, settings) {
 }
 
 async function buildPortfolio() {
+  await ensureLocalDataFiles()
   const [settings, positions] = await Promise.all([readSettings(), readPositions()])
   const tickers = positions.map((position) => position.underlying || position.ticker)
   const prices = await fetchPrices(tickers)
@@ -527,6 +567,7 @@ async function buildPortfolio() {
 }
 
 async function saveSettings(payload) {
+  await ensureLocalDataFiles()
   const next = {
     accountName: payload.accountName || 'Personal Portfolio Book',
     asOfDate: formatIsoDate(payload.asOfDate),
@@ -539,6 +580,7 @@ async function saveSettings(payload) {
 }
 
 async function savePositions(positions) {
+  await ensureLocalDataFiles()
   const rows = Array.isArray(positions) ? positions : []
   await writeFile(join(dataDir, 'positions.csv'), `${toCsv(rows)}\n`)
 }
@@ -594,6 +636,7 @@ const server = createServer(async (request, response) => {
     }
 
     if (url.pathname === '/api/positions.csv' && request.method === 'GET') {
+      await ensureLocalDataFiles()
       const raw = await readFile(join(dataDir, 'positions.csv'), 'utf8')
       response.writeHead(200, {
         'content-type': 'text/csv; charset=utf-8',
@@ -639,6 +682,8 @@ const server = createServer(async (request, response) => {
     })
   }
 })
+
+await ensureLocalDataFiles()
 
 server.listen(port, '127.0.0.1', () => {
   console.log(`Portfolio Review is running at http://127.0.0.1:${port}`)
