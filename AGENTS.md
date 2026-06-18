@@ -23,9 +23,7 @@ Do not edit portfolio data files unless the user asks.
 From the repository root:
 
 ```bash
-npm install
-npm run build
-npm start
+npm run local
 ```
 
 The expected URL is:
@@ -63,12 +61,18 @@ node --version
 npm --version
 ```
 
+Then rerun:
+
+```bash
+npm run local
+```
+
 ## If Port 8787 Is Already In Use
 
 First check whether the existing process is an old local server for this same project. If it is, stop that process and rerun:
 
 ```bash
-npm start
+npm run local
 ```
 
 If stopping the old process is not appropriate, run the app on another local port.
@@ -77,13 +81,13 @@ On Windows PowerShell:
 
 ```powershell
 $env:PORT=8788
-npm start
+npm run local
 ```
 
 On macOS/Linux:
 
 ```bash
-PORT=8788 npm start
+PORT=8788 npm run local
 ```
 
 Then give the user:
