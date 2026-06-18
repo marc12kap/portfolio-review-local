@@ -24,8 +24,8 @@ Using Claude Code or another coding agent? See [AGENTS.md](AGENTS.md) for local 
 
 From this folder:
 
-```powershell
-node server.mjs
+```bash
+npm run local
 ```
 
 Then open:
@@ -34,14 +34,15 @@ Then open:
 http://127.0.0.1:8787
 ```
 
-If you edit the React source, rebuild it first:
+This installs dependencies, builds the frontend, and starts the local server. If dependencies are
+already installed and you only want to rebuild:
 
-```powershell
-npm install
-npm run local
+```bash
+npm run build
+npm start
 ```
 
-On Windows, `run-local.ps1` runs the same install, build, and start steps.
+On Windows, `run-local.ps1` runs the same one-command local startup.
 
 ## Editing The Account
 
@@ -90,5 +91,5 @@ images are saved into `data/logos`, so a zipped copy can include the cached logo
 
 ## Zip Handoff
 
-Zip the folder with `dist`, `data`, `src`, `public`, `server.mjs`, and the package files. You can
-omit `node_modules`; the built app can run from `dist` with `node server.mjs`.
+Zip or download the repository source. You can omit `node_modules`; `npm run local` will install
+dependencies, build `dist`, and start the local server.

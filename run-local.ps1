@@ -6,6 +6,4 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
   exit 1
 }
 
-npm install
-npm run build
-npm start
+npm run local

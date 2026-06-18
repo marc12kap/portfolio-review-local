@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "api": "node server.mjs",
-    "local": "npm run build && npm start",
+    "setup": "npm install && npm run build",
+    "local": "npm install && npm run build && npm start",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "start": "node server.mjs"
