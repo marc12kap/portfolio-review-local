@@ -74,6 +74,12 @@ type Portfolio = {
   prices: Record<string, { price: number; source: string; fetchedAt: number }>
 }
 
+async function fetchPortfolio() {
+  const response = await fetch('/api/portfolio')
+  if (!response.ok) throw new Error('The local portfolio API is not running.')
+  return (await response.json()) as Portfolio
+}
+
 const emptyPosition = (): Position => ({
   id: crypto.randomUUID(),
   ticker: '',
@@ -512,9 +518,7 @@ function App() {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/portfolio')
-      if (!response.ok) throw new Error('The local portfolio API is not running.')
-      setPortfolio(await response.json())
+      setPortfolio(await fetchPortfolio())
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load portfolio.')
     } finally {
@@ -523,7 +527,26 @@ function App() {
   }
 
   useEffect(() => {
-    void loadPortfolio()
+    let canceled = false
+
+    async function loadInitialPortfolio() {
+      try {
+        const nextPortfolio = await fetchPortfolio()
+        if (!canceled) setPortfolio(nextPortfolio)
+      } catch (loadError) {
+        if (!canceled) {
+          setError(loadError instanceof Error ? loadError.message : 'Unable to load portfolio.')
+        }
+      } finally {
+        if (!canceled) setLoading(false)
+      }
+    }
+
+    void loadInitialPortfolio()
+
+    return () => {
+      canceled = true
+    }
   }, [])
 
   if (loading && !portfolio) {
@@ -552,7 +575,7 @@ function App() {
         >
           {showPrivate ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
         </button>
-        <button type="button" onClick={loadPortfolio} aria-label="Refresh live prices">
+        <button type="button" onClick={() => void loadPortfolio()} aria-label="Refresh live prices">
           <RefreshCw size={16} aria-hidden="true" />
         </button>
         <button type="button" onClick={() => setEditorOpen(true)}>
