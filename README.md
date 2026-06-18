@@ -3,6 +3,9 @@
 A local CSV-backed personal portfolio book that recreates the attached one-page "Portfolio Review"
 layout while letting the owner update holdings without a database.
 
+New here? See [LOCAL_INSTALLATION.md](LOCAL_INSTALLATION.md) for ZIP download instructions and a
+ready-to-paste Claude Code setup prompt.
+
 ## What It Does
 
 - Reads positions from `data/positions.csv`.
