@@ -1,0 +1,15 @@
+id,ticker,company,underlying,assetType,side,quantity,averageCost,multiplier,marketValue,optionType,strikePrice,expiryDate,premium,sector,structure,logoUrl
+1,SNDK,SanDisk,SNDK,stock,long,,,,22100,,,,,Memory & Storage,Common shares,https://logo.clearbit.com/sandisk.com
+2,MU,Micron Technology,MU,stock,long,,,,12500,,,,,Memory & Storage,Shares with long call overlay,https://logo.clearbit.com/micron.com
+3,NBIS,Nebius Group,NBIS,stock,long,,,,17400,,,,,Datacenter & AI Infrastructure,Common shares,https://logo.clearbit.com/nebius.com
+4,FIX,Comfort Systems USA,FIX,stock,long,,,,9900,,,,,Datacenter & AI Infrastructure,Shares with covered-call hedge,https://logo.clearbit.com/comfortsystemsusa.com
+5,LITE,Lumentum,LITE,stock,long,,,,8150,,,,,Semiconductors & Photonics,Common shares,https://logo.clearbit.com/lumentum.com
+6,AXTI,AXT Inc,AXTI,stock,long,,,,6650,,,,,Semiconductors & Photonics,Shares with covered-call hedge,https://logo.clearbit.com/axt.com
+7,POWI,Power Integrations,POWI,option,long,,,,1400,call,,,,Semiconductors & Photonics,Long call position,https://logo.clearbit.com/power.com
+8,AAOI,Applied Optoelectronics,AAOI,option,long,,,,100,call,,2026-06-18,,Semiconductors & Photonics,Long call position (6/18 expiry),https://logo.clearbit.com/ao-inc.com
+9,FLNC,Fluence Energy,FLNC,stock,long,,,,7300,,,,,Power & Energy Storage,Shares with long call overlay,https://logo.clearbit.com/fluenceenergy.com
+10,FPS,First Phosphate,FPS,stock,long,,,,2200,,,,,Power & Energy Storage,Common shares,https://logo.clearbit.com/firstphosphate.com
+11,BE,Bloom Energy,BE,stock,long,,,,1900,,,,,Power & Energy Storage,Common shares,https://logo.clearbit.com/bloomenergy.com
+12,SEDG,SolarEdge,SEDG,option,long,,,,1200,call,,,,Power & Energy Storage,Long call position,https://logo.clearbit.com/solaredge.com
+13,RKLB,Rocket Lab,RKLB,stock,long,,,,8100,,,,,Space & Defense,Shares with covered-call hedge,https://logo.clearbit.com/rocketlabusa.com
+14,NAK,Northern Dynasty Minerals,NAK,option,long,,,,700,call,,,,Mining & Materials,Long call spread,https://logo.clearbit.com/northerndynastyminerals.com
