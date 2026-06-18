@@ -26,7 +26,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['*.{js,mjs,cjs}', 'server.mjs'],
+    files: ['**/*.{js,mjs,cjs}'],
     languageOptions: {
       ecmaVersion: 2023,
       sourceType: 'module',
