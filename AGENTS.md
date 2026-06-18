@@ -36,13 +36,32 @@ http://127.0.0.1:8787
 
 ## If Node Or npm Is Missing
 
-Tell the user to install Node.js LTS from:
+Help the user install Node.js LTS before continuing. First detect the operating system, then choose the safest available installer path.
+
+On Windows, try `winget` if available:
+
+```powershell
+winget install OpenJS.NodeJS.LTS
+```
+
+On macOS, try Homebrew if available:
+
+```bash
+brew install node
+```
+
+If a package manager is not available, open or give the user the Node.js LTS download page:
 
 ```text
 https://nodejs.org/
 ```
 
-Then have them reopen Claude Code or their terminal and retry the setup.
+After installation, have the user reopen Claude Code or their terminal if needed. Verify both commands work before continuing:
+
+```bash
+node --version
+npm --version
+```
 
 ## If Port 8787 Is Already In Use
 
