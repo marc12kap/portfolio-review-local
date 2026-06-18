@@ -3,8 +3,7 @@
 A local portfolio review app for tracking holdings, performance, cash, and exposure from editable
 CSV and JSON files. It runs entirely on your computer with no database required.
 
-New here? See [LOCAL_INSTALLATION.md](LOCAL_INSTALLATION.md) for ZIP download instructions and a
-ready-to-paste Claude Code setup prompt.
+Using Claude Code or another coding agent? See [AGENTS.md](AGENTS.md) for local setup instructions.
 
 ## What It Does
 
