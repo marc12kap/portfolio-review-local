@@ -67,6 +67,12 @@ data/settings.json
 The repository ships example data in `demo-data/sample`. Your personal working files live in `data/`
 and are ignored by Git, so local edits stay on your computer.
 
+Before saving edits, the server writes timestamped backups to:
+
+```text
+data/backups/
+```
+
 The report intentionally shows percentages only. The editor includes account total value because the
 app needs it to calculate position weights and leftover cash.
 
