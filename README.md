@@ -5,6 +5,13 @@ CSV and JSON files. It runs entirely on your computer with no database required.
 
 Using Claude Code or another coding agent? See [AGENTS.md](AGENTS.md) for local setup instructions.
 
+## Privacy Model
+
+- Your working portfolio files live under `data/` on your computer and are ignored by Git.
+- There is no account system, cloud database, or hosted backend.
+- The local server may contact public market/logo endpoints to fetch live prices and company logos.
+- Cached logos, backups, and edited CSV/JSON files remain local unless you deliberately share them.
+
 ## What It Does
 
 - Reads positions from `data/positions.csv`.
@@ -114,3 +121,7 @@ the repo live in `demo-data/sample/logos`.
 
 Zip or download the repository source. You can omit `node_modules`; `npm run local` will install
 dependencies, build `dist`, and start the local server.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
