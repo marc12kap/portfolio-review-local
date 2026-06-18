@@ -97,7 +97,13 @@ function readBody(request) {
         request.destroy()
       }
     })
-    request.on('end', () => resolveBody(body ? JSON.parse(body) : {}))
+    request.on('end', () => {
+      try {
+        resolveBody(body ? JSON.parse(body) : {})
+      } catch {
+        reject(validationError('Request body must be valid JSON.', ['Check the request JSON syntax.']))
+      }
+    })
     request.on('error', reject)
   })
 }

@@ -81,7 +81,11 @@ type ApiErrorPayload = {
 
 async function fetchPortfolio() {
   const response = await fetch('/api/portfolio')
-  if (!response.ok) throw new Error('The local portfolio API is not running.')
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
+    throw new Error([payload.error || 'The local portfolio API is not running.', details].filter(Boolean).join('\n'))
+  }
   return (await response.json()) as Portfolio
 }
 
@@ -148,12 +152,13 @@ function PerformanceChart({ points, finalReturn }: { points: PerformancePoint[];
   const paddingTop = 10
   const paddingBottom = 24
   const plotHeight = height - paddingTop - paddingBottom
-  const maxValue = Math.max(20, ...points.map((point) => point.returnPct), finalReturn) * 1.08
-  const minValue = Math.min(0, ...points.map((point) => point.returnPct))
+  const chartPoints = points.length ? points : [{ date: '', returnPct: 0 }]
+  const maxValue = Math.max(20, ...chartPoints.map((point) => point.returnPct), finalReturn) * 1.08
+  const minValue = Math.min(0, ...chartPoints.map((point) => point.returnPct))
   const range = Math.max(1, maxValue - minValue)
 
-  const coordinates = points.map((point, index) => {
-    const x = points.length === 1 ? width : (index / (points.length - 1)) * width
+  const coordinates = chartPoints.map((point, index) => {
+    const x = chartPoints.length === 1 ? width : (index / (chartPoints.length - 1)) * width
     const y = paddingTop + ((maxValue - point.returnPct) / range) * plotHeight
     return [x, y] as const
   })
@@ -183,6 +188,8 @@ function PerformanceChart({ points, finalReturn }: { points: PerformancePoint[];
 }
 
 function SectorAllocation({ sectors }: { sectors: Sector[] }) {
+  const rows = sectors.length ? sectors : [{ name: 'No holdings yet', weight: 0 }]
+
   return (
     <section className="report-section allocation-section">
       <div className="section-heading">
@@ -194,7 +201,7 @@ function SectorAllocation({ sectors }: { sectors: Sector[] }) {
         Option positions are netted into their underlying.
       </p>
       <div className="sector-bars">
-        {sectors.map((sector) => (
+        {rows.map((sector) => (
           <div className="sector-row" key={sector.name}>
             <strong>{sector.name}</strong>
             <span className="bar-track">
@@ -242,6 +249,12 @@ function HoldingsDetail({
         Each line consolidates a single underlying; option overlays are netted into net exposure.
         Weights are a percentage of total market value.
       </p>
+      {!holdings.length ? (
+        <div className="empty-panel">
+          <strong>No holdings yet</strong>
+          <p>Use Edit Positions to add rows, or replace the local CSV at data/positions.csv.</p>
+        </div>
+      ) : null}
       <div className="holdings-table" role="table" aria-label="Holdings detail">
         <div className="table-header" role="row">
           <span>Position</span>
@@ -517,6 +530,45 @@ function Editor({
   )
 }
 
+function EmptyPortfolioState({ onEdit }: { onEdit: () => void }) {
+  return (
+    <section className="report-section empty-portfolio-section">
+      <div className="empty-panel">
+        <strong>No portfolio rows yet</strong>
+        <p>
+          Add holdings in the local editor or paste rows into data/positions.csv. The app will keep
+          your working data local and create backups before saves.
+        </p>
+        <button type="button" onClick={onEdit}>
+          <Plus size={15} aria-hidden="true" />
+          Add Positions
+        </button>
+      </div>
+    </section>
+  )
+}
+
+function LoadErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
+  const lines = (error || 'Unable to load portfolio.').split('\n').filter(Boolean)
+
+  return (
+    <main className="state-screen">
+      <h1>Portfolio Review</h1>
+      <div className="state-card" role="alert">
+        <strong>Unable to load the local portfolio</strong>
+        {lines.map((line) => (
+          <p key={line}>{line}</p>
+        ))}
+        <p>Check that the local server is running and that data files are readable.</p>
+        <button type="button" onClick={onRetry}>
+          <RefreshCw size={15} aria-hidden="true" />
+          Retry
+        </button>
+      </div>
+    </main>
+  )
+}
+
 function App() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
   const [loading, setLoading] = useState(true)
@@ -564,15 +616,11 @@ function App() {
   }
 
   if (!portfolio) {
-    return (
-      <main className="state-screen">
-        <h1>Portfolio Review</h1>
-        <p>{error || 'Unable to load portfolio.'}</p>
-      </main>
-    )
+    return <LoadErrorState error={error} onRetry={() => void loadPortfolio()} />
   }
 
   const { settings, metrics } = portfolio
+  const hasHoldings = portfolio.holdings.length > 0
 
   return (
     <>
@@ -673,6 +721,7 @@ function App() {
         </section>
 
         <SectorAllocation sectors={portfolio.sectors} />
+        {!hasHoldings ? <EmptyPortfolioState onEdit={() => setEditorOpen(true)} /> : null}
         <HoldingsDetail
           sectors={portfolio.sectors}
           holdings={portfolio.holdings}
