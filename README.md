@@ -1,7 +1,7 @@
 # Portfolio Review Local
 
-A local CSV-backed personal portfolio book that recreates the attached one-page "Portfolio Review"
-layout while letting the owner update holdings without a database.
+A local portfolio review app for tracking holdings, performance, cash, and exposure from editable
+CSV and JSON files. It runs entirely on your computer with no database required.
 
 New here? See [LOCAL_INSTALLATION.md](LOCAL_INSTALLATION.md) for ZIP download instructions and a
 ready-to-paste Claude Code setup prompt.
