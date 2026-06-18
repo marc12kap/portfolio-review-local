@@ -1,24 +1,26 @@
-# Agent Setup Instructions
+# Agent Playbook
 
-This repository is a local portfolio review app. It uses React + Vite for the frontend and a small Node server in `server.mjs` for local API routes, CSV/JSON persistence, logo caching, and static file serving.
+This is a local-first portfolio review app. The frontend is React + Vite, and `server.mjs` serves the built app plus local API routes for CSV/JSON persistence, live price lookup, and logo caching.
 
-## Goal
+## Prime Directive
 
-Get the app running locally for the user and give them the browser URL.
+Help the user run or improve the app without taking ownership of their portfolio data.
 
-## Important Files
+- Do not edit `data/positions.csv`, `data/settings.json`, or `data/performance.csv` unless the user explicitly asks.
+- Do not commit `node_modules/` or `dist/`.
+- Prefer small, reviewable changes with `npm run check` passing.
+- When a local server is started, report the exact URL and port.
 
-- `package.json`: project scripts and dependencies
-- `server.mjs`: local Node server
-- `src/`: React app source
-- `data/positions.csv`: local portfolio holdings
-- `data/settings.json`: local account settings
-- `data/performance.csv`: local performance path
-- `README.md`: project overview
+## Key Files
 
-Do not edit portfolio data files unless the user asks.
+- `package.json`: scripts and dependencies
+- `server.mjs`: local server and API routes
+- `src/`: React app
+- `data/`: local portfolio data
+- `.github/workflows/ci.yml`: GitHub Actions validation
+- `README.md`: user-facing overview
 
-## Standard Setup
+## Run The App
 
 From the repository root:
 
@@ -26,98 +28,97 @@ From the repository root:
 npm run local
 ```
 
-The expected URL is:
+Expected URL:
 
 ```text
 http://127.0.0.1:8787
 ```
 
+`npm run local` installs dependencies, builds the frontend, and starts the local server.
+
 ## If Node Or npm Is Missing
 
-Help the user install Node.js LTS before continuing. First detect the operating system, then choose the safest available installer path.
+Help the user install Node.js LTS, then retry.
 
-On Windows, try `winget` if available:
+Windows, if `winget` is available:
 
 ```powershell
 winget install OpenJS.NodeJS.LTS
 ```
 
-On macOS, try Homebrew if available:
+macOS, if Homebrew is available:
 
 ```bash
 brew install node
 ```
 
-If a package manager is not available, open or give the user the Node.js LTS download page:
+Fallback download:
 
 ```text
 https://nodejs.org/
 ```
 
-After installation, have the user reopen Claude Code or their terminal if needed. Verify both commands work before continuing:
+After installation, verify:
 
 ```bash
 node --version
 npm --version
 ```
 
-Then rerun:
+The user may need to reopen Claude Code or their terminal before those commands are available.
 
-```bash
-npm run local
-```
+## If Port 8787 Is Busy
 
-## If Port 8787 Is Already In Use
+If the existing process is an old server for this project, stop it and rerun `npm run local`.
 
-First check whether the existing process is an old local server for this same project. If it is, stop that process and rerun:
+Otherwise use another port.
 
-```bash
-npm run local
-```
-
-If stopping the old process is not appropriate, run the app on another local port.
-
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
 $env:PORT=8788
 npm run local
 ```
 
-On macOS/Linux:
+macOS/Linux:
 
 ```bash
 PORT=8788 npm run local
 ```
 
-Then give the user:
+Report the new URL, for example:
 
 ```text
 http://127.0.0.1:8788
 ```
 
-## Validation
+## Change Validation
 
-For code changes, run the local validation suite before opening or updating a PR:
+Before opening or updating a PR:
 
 ```bash
 npm run check
 ```
 
-After starting the server, verify both routes return successfully:
+This runs:
 
-```text
-http://127.0.0.1:8787
-http://127.0.0.1:8787/api/portfolio
+- ESLint
+- TypeScript typecheck
+- production build
+
+For install/build validation without starting the long-running server:
+
+```bash
+npm run setup
 ```
 
-If using a different port, validate the same paths on that port.
+## Smoke Test Checklist
 
-## User-Facing Summary
+After setup or code changes:
 
-When finished, tell the user:
-
-- the local URL to open
-- whether dependencies installed successfully
-- whether the build passed
-- any issue you fixed or could not fix
+- `npm run check` passes for code changes.
+- The local server starts without port errors.
+- `/` returns `200` and includes the React root.
+- `/api/portfolio` returns `200` JSON.
+- If browser automation is available, open the local URL and confirm the dashboard renders.
+- Final response includes the local URL, changed port if any, validation run, and any unresolved issue.
