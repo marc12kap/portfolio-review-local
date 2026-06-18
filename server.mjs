@@ -8,6 +8,7 @@ const root = fileURLToPath(new URL('.', import.meta.url))
 const dataDir = join(root, 'data')
 const demoDataDir = join(root, 'demo-data', 'sample')
 const logoDir = join(dataDir, 'logos')
+const backupDir = join(dataDir, 'backups')
 const demoLogoDir = join(demoDataDir, 'logos')
 const distDir = join(root, 'dist')
 const port = Number(process.env.PORT || 8787)
@@ -62,6 +63,20 @@ async function ensureLocalDataFiles() {
   } catch {
     // Demo logos are optional; missing logos can still be fetched and cached on demand.
   }
+}
+
+function backupTimestamp() {
+  return new Date().toISOString().replace(/[:.]/g, '-')
+}
+
+async function backupLocalDataFile(fileName) {
+  const sourcePath = join(dataDir, fileName)
+  if (!(await pathExists(sourcePath))) return
+
+  await mkdir(backupDir, { recursive: true })
+  const extension = extname(fileName)
+  const baseName = fileName.slice(0, -extension.length)
+  await copyFile(sourcePath, join(backupDir, `${baseName}-${backupTimestamp()}${extension}`))
 }
 
 function sendJson(response, status, payload) {
@@ -569,6 +584,7 @@ async function buildPortfolio() {
 
 async function saveSettings(payload) {
   await ensureLocalDataFiles()
+  await backupLocalDataFile('settings.json')
   const next = {
     accountName: payload.accountName || 'Personal Portfolio Book',
     asOfDate: formatIsoDate(payload.asOfDate),
@@ -582,6 +598,7 @@ async function saveSettings(payload) {
 
 async function savePositions(positions) {
   await ensureLocalDataFiles()
+  await backupLocalDataFile('positions.csv')
   const rows = Array.isArray(positions) ? positions : []
   await writeFile(join(dataDir, 'positions.csv'), `${toCsv(rows)}\n`)
 }

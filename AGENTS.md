@@ -18,6 +18,7 @@ Help the user run or improve the app without taking ownership of their portfolio
 - `server.mjs`: local server and API routes
 - `src/`: React app
 - `data/`: ignored local portfolio data created on first run
+- `data/backups/`: ignored timestamped backups created before local saves
 - `demo-data/sample/`: committed demo defaults used to seed missing local data
 - `.github/workflows/ci.yml`: GitHub Actions validation
 - `README.md`: user-facing overview
