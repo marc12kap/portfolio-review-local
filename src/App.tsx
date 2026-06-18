@@ -74,6 +74,11 @@ type Portfolio = {
   prices: Record<string, { price: number; source: string; fetchedAt: number }>
 }
 
+type ApiErrorPayload = {
+  error?: string
+  validationErrors?: string[]
+}
+
 async function fetchPortfolio() {
   const response = await fetch('/api/portfolio')
   if (!response.ok) throw new Error('The local portfolio API is not running.')
@@ -306,17 +311,16 @@ function Editor({
     setSaving(true)
     setError('')
     try {
-      await fetch('/api/settings', {
+      const response = await fetch('/api/portfolio', {
         method: 'PUT',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ settings }),
+        body: JSON.stringify({ settings, positions }),
       })
-      const response = await fetch('/api/positions', {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ positions }),
-      })
-      if (!response.ok) throw new Error('Unable to save positions.')
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+        const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
+        throw new Error([payload.error || 'Unable to save portfolio.', details].filter(Boolean).join('\n'))
+      }
       onSaved(await response.json())
       onClose()
     } catch (saveError) {
@@ -492,7 +496,13 @@ function Editor({
           </div>
         </div>
 
-        {error ? <p className="editor-error">{error}</p> : null}
+        {error ? (
+          <div className="editor-error" role="alert">
+            {error.split('\n').map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+        ) : null}
         <div className="editor-actions">
           <button type="button" onClick={onClose}>
             Cancel

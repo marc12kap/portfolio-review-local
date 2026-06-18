@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { consolidatePositions, inferStructure } from '../server.mjs'
+import { consolidatePositions, inferStructure, validatePositions, validateSettings } from '../server.mjs'
 
 const settings = (overrides = {}) => ({
   accountTotal: 10_000,
@@ -164,6 +164,86 @@ describe('inferStructure', () => {
         position({ assetType: 'option', optionType: 'put' }),
       ]),
       'Common shares with option overlay',
+    )
+  })
+})
+
+describe('validation', () => {
+  it('accepts valid positions and settings', () => {
+    assert.doesNotThrow(() =>
+      validatePositions([
+        position({ ticker: 'ABC', quantity: '10', marketValue: '', expiryDate: '' }),
+        position({
+          ticker: 'ABC 250117C00020000',
+          underlying: 'ABC',
+          assetType: 'option',
+          optionType: 'call',
+          quantity: '1',
+          multiplier: '100',
+          expiryDate: '2027-01-15',
+        }),
+      ]),
+    )
+    assert.doesNotThrow(() =>
+      validateSettings({
+        accountTotal: 10_000,
+        baselineInvested: 8_000,
+        asOfDate: '2026-06-18',
+        periodStart: '2026-01-01',
+        periodEnd: '2026-06-18',
+      }),
+    )
+  })
+
+  it('rejects row-level position errors without normalizing them away', () => {
+    assert.throws(
+      () =>
+        validatePositions([
+          position({
+            ticker: '',
+            assetType: 'crypto',
+            side: 'borrowed',
+            quantity: 'ten',
+            marketValue: '',
+            optionType: 'maybe',
+            expiryDate: 'next week',
+          }),
+        ]),
+      (error) => {
+        assert.equal(error.statusCode, 400)
+        assert.deepEqual(error.validationErrors, [
+          'Row 1: ticker is required.',
+          'Row 1: asset type must be stock, option, spread, or cash.',
+          'Row 1: side must be long or short.',
+          'Row 1: option type must be call or put.',
+          'Row 1: quantity must be numeric when filled.',
+          'Row 1: enter quantity or fallback market value.',
+          'Row 1: expiry date must be a YYYY-MM-DD date.',
+        ])
+        return true
+      },
+    )
+  })
+
+  it('rejects invalid settings values', () => {
+    assert.throws(
+      () =>
+        validateSettings({
+          accountTotal: 'many',
+          baselineInvested: '',
+          asOfDate: 'June 18',
+          periodStart: '2026-01-01',
+          periodEnd: '2026-06-18',
+        }),
+      (error) => {
+        assert.equal(error.statusCode, 400)
+        assert.deepEqual(error.validationErrors, [
+          'Current book value must be a number.',
+          'Beginning book value must be a number.',
+          'As-of date must be a YYYY-MM-DD date.',
+        ])
+        return true
+      },
     )
   })
 })

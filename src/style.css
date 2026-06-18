@@ -675,9 +675,22 @@ a {
 
 .editor-error {
   margin: 0 26px 14px;
+  padding: 10px 12px;
+  border: 1px solid #e2b7b5;
+  border-radius: 6px;
+  background: #fff6f5;
   color: #a84845;
   font-size: 13px;
   font-weight: 800;
+}
+
+.editor-error p {
+  margin: 0;
+}
+
+.editor-error p + p {
+  margin-top: 4px;
+  font-weight: 700;
 }
 
 .editor-actions {

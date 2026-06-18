@@ -177,6 +177,17 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
+function hasNumericValue(value) {
+  if (value === null || value === undefined || value === '') return false
+  return Number.isFinite(Number(String(value).replace(/[$,%\s]/g, '')))
+}
+
+function isValidIsoDate(value) {
+  if (!value) return true
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) return false
+  return !Number.isNaN(new Date(`${value}T00:00:00`).getTime())
+}
+
 function formatIsoDate(value) {
   if (!value) return ''
   const date = new Date(`${value}T00:00:00`)
@@ -204,6 +215,85 @@ function cleanTicker(value) {
 
 function normalizeLogoTicker(value) {
   return cleanTicker(value).replace(/[^A-Z0-9.-]/g, '')
+}
+
+function validationError(message, errors) {
+  const error = new Error(message)
+  error.statusCode = 400
+  error.validationErrors = errors
+  return error
+}
+
+function validateSettings(payload) {
+  const errors = []
+  const numericFields = [
+    ['accountTotal', 'Current book value'],
+    ['baselineInvested', 'Beginning book value'],
+  ]
+
+  for (const [field, label] of numericFields) {
+    if (!hasNumericValue(payload?.[field])) errors.push(`${label} must be a number.`)
+  }
+
+  for (const [field, label] of [
+    ['asOfDate', 'As-of date'],
+    ['periodStart', 'Period start date'],
+    ['periodEnd', 'Period end date'],
+  ]) {
+    if (!isValidIsoDate(payload?.[field])) errors.push(`${label} must be a YYYY-MM-DD date.`)
+  }
+
+  if (errors.length) throw validationError('Settings validation failed.', errors)
+}
+
+function validatePositions(positions) {
+  const errors = []
+
+  if (!Array.isArray(positions)) {
+    throw validationError('Positions validation failed.', ['Positions must be an array.'])
+  }
+
+  positions.forEach((position, index) => {
+    const rowNumber = index + 1
+    const ticker = cleanTicker(position?.ticker)
+    const underlying = cleanTicker(position?.underlying || position?.ticker)
+    const assetType = String(position?.assetType || 'stock')
+    const side = String(position?.side || 'long')
+    const optionType = String(position?.optionType || '')
+
+    if (!ticker) errors.push(`Row ${rowNumber}: ticker is required.`)
+    if (!underlying) errors.push(`Row ${rowNumber}: underlying ticker is required.`)
+    if (!['stock', 'option', 'spread', 'cash'].includes(assetType)) {
+      errors.push(`Row ${rowNumber}: asset type must be stock, option, spread, or cash.`)
+    }
+    if (!['long', 'short'].includes(side)) errors.push(`Row ${rowNumber}: side must be long or short.`)
+    if (optionType && !['call', 'put'].includes(optionType)) {
+      errors.push(`Row ${rowNumber}: option type must be call or put.`)
+    }
+
+    for (const [field, label] of [
+      ['quantity', 'quantity'],
+      ['averageCost', 'average cost'],
+      ['multiplier', 'multiplier'],
+      ['marketValue', 'market value'],
+      ['strikePrice', 'strike price'],
+      ['premium', 'premium'],
+    ]) {
+      if (position?.[field] !== '' && position?.[field] !== undefined && !hasNumericValue(position[field])) {
+        errors.push(`Row ${rowNumber}: ${label} must be numeric when filled.`)
+      }
+    }
+
+    if (!hasNumericValue(position?.quantity) && !hasNumericValue(position?.marketValue)) {
+      errors.push(`Row ${rowNumber}: enter quantity or fallback market value.`)
+    }
+
+    if (!isValidIsoDate(position?.expiryDate)) {
+      errors.push(`Row ${rowNumber}: expiry date must be a YYYY-MM-DD date.`)
+    }
+  })
+
+  if (errors.length) throw validationError('Positions validation failed.', errors)
 }
 
 function logoContentTypeForExtension(extension) {
@@ -584,6 +674,7 @@ async function buildPortfolio() {
 
 async function saveSettings(payload) {
   await ensureLocalDataFiles()
+  validateSettings(payload)
   await backupLocalDataFile('settings.json')
   const next = {
     accountName: payload.accountName || 'Personal Portfolio Book',
@@ -598,9 +689,32 @@ async function saveSettings(payload) {
 
 async function savePositions(positions) {
   await ensureLocalDataFiles()
+  validatePositions(positions)
   await backupLocalDataFile('positions.csv')
   const rows = Array.isArray(positions) ? positions : []
   await writeFile(join(dataDir, 'positions.csv'), `${toCsv(rows)}\n`)
+}
+
+async function savePortfolio(payload) {
+  await ensureLocalDataFiles()
+  const settings = payload?.settings || {}
+  const positions = payload?.positions
+  validateSettings(settings)
+  validatePositions(positions)
+  await backupLocalDataFile('settings.json')
+  await backupLocalDataFile('positions.csv')
+  const nextSettings = {
+    accountName: settings.accountName || 'Personal Portfolio Book',
+    asOfDate: formatIsoDate(settings.asOfDate),
+    periodStart: formatIsoDate(settings.periodStart),
+    periodEnd: formatIsoDate(settings.periodEnd),
+    accountTotal: toNumber(settings.accountTotal),
+    baselineInvested: toNumber(settings.baselineInvested),
+  }
+  await Promise.all([
+    writeFile(join(dataDir, 'settings.json'), `${JSON.stringify(nextSettings, null, 2)}\n`),
+    writeFile(join(dataDir, 'positions.csv'), `${toCsv(positions)}\n`),
+  ])
 }
 
 async function serveStatic(request, response) {
@@ -635,6 +749,13 @@ const server = createServer(async (request, response) => {
     const url = new URL(request.url, `http://${request.headers.host}`)
 
     if (url.pathname === '/api/portfolio' && request.method === 'GET') {
+      sendJson(response, 200, await buildPortfolio())
+      return
+    }
+
+    if (url.pathname === '/api/portfolio' && request.method === 'PUT') {
+      const body = await readBody(request)
+      await savePortfolio(body)
       sendJson(response, 200, await buildPortfolio())
       return
     }
@@ -695,13 +816,15 @@ const server = createServer(async (request, response) => {
 
     await serveStatic(request, response)
   } catch (error) {
-    sendJson(response, 500, {
+    const statusCode = Number.isInteger(error?.statusCode) ? error.statusCode : 500
+    sendJson(response, statusCode, {
       error: error instanceof Error ? error.message : 'Unexpected server error.',
+      validationErrors: Array.isArray(error?.validationErrors) ? error.validationErrors : undefined,
     })
   }
 })
 
-export { consolidatePositions, inferStructure }
+export { consolidatePositions, inferStructure, validatePositions, validateSettings }
 
 if (isMainModule) {
   await ensureLocalDataFiles()
