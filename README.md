@@ -44,6 +44,16 @@ npm start
 
 On Windows, `run-local.ps1` runs the same one-command local startup.
 
+## Validate Changes
+
+Before opening a PR or sharing changes, run:
+
+```bash
+npm run check
+```
+
+This runs linting, TypeScript typechecking, and the production build.
+
 ## Editing The Account
 
 Use the `Edit Positions` button in the top right of the report. Saving writes directly to:

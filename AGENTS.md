@@ -98,6 +98,12 @@ http://127.0.0.1:8788
 
 ## Validation
 
+For code changes, run the local validation suite before opening or updating a PR:
+
+```bash
+npm run check
+```
+
 After starting the server, verify both routes return successfully:
 
 ```text
