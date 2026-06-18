@@ -10,6 +10,7 @@ Using Claude Code or another coding agent? See [AGENTS.md](AGENTS.md) for local 
 - Reads positions from `data/positions.csv`.
 - Reads centralized book settings from `data/settings.json`.
 - Reads the performance path from `data/performance.csv`.
+- Seeds missing local data files from `demo-data/sample` on first run.
 - Fetches live prices from a local Node server when a row has share or contract quantity.
 - Falls back to the CSV `marketValue` column when quantity is blank or prices are unavailable.
 - Fetches company logos through the local server and caches them in `data/logos`.
@@ -63,6 +64,9 @@ data/positions.csv
 data/settings.json
 ```
 
+The repository ships example data in `demo-data/sample`. Your personal working files live in `data/`
+and are ignored by Git, so local edits stay on your computer.
+
 The report intentionally shows percentages only. The editor includes account total value because the
 app needs it to calculate position weights and leftover cash.
 
@@ -78,7 +82,8 @@ The eye icon reveals private dollar values:
 
 The browser loads logos from local routes such as `/api/logo/SNDK`. On first request, the server
 tries the `logoUrl` in `data/positions.csv`, then a favicon fallback from the same domain. Successful
-images are saved into `data/logos`, so a zipped copy can include the cached logo files.
+images are saved into ignored local cache files under `data/logos`. The sample logos that ship with
+the repo live in `demo-data/sample/logos`.
 
 ## CSV Columns
 

@@ -7,7 +7,8 @@ This is a local-first portfolio review app. The frontend is React + Vite, and `s
 Help the user run or improve the app without taking ownership of their portfolio data.
 
 - Do not edit `data/positions.csv`, `data/settings.json`, or `data/performance.csv` unless the user explicitly asks.
-- Do not commit `node_modules/` or `dist/`.
+- Do not commit `node_modules/`, `dist/`, or local working data under `data/`.
+- Treat `demo-data/sample/` as the committed example dataset.
 - Prefer small, reviewable changes with `npm run check` passing.
 - When a local server is started, report the exact URL and port.
 
@@ -16,7 +17,8 @@ Help the user run or improve the app without taking ownership of their portfolio
 - `package.json`: scripts and dependencies
 - `server.mjs`: local server and API routes
 - `src/`: React app
-- `data/`: local portfolio data
+- `data/`: ignored local portfolio data created on first run
+- `demo-data/sample/`: committed demo defaults used to seed missing local data
 - `.github/workflows/ci.yml`: GitHub Actions validation
 - `README.md`: user-facing overview
 
