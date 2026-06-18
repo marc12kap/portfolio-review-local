@@ -106,6 +106,7 @@ This runs:
 
 - ESLint
 - TypeScript typecheck
+- Node test suite
 - production build
 
 For install/build validation without starting the long-running server:

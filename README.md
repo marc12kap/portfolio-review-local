@@ -53,7 +53,7 @@ Before opening a PR or sharing changes, run:
 npm run check
 ```
 
-This runs linting, TypeScript typechecking, and the production build.
+This runs linting, TypeScript typechecking, the Node test suite, and the production build.
 
 ## Editing The Account
 

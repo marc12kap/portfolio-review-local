@@ -2,7 +2,7 @@ import { createServer } from 'node:http'
 import { copyFile, readdir, readFile, writeFile, stat, mkdir } from 'node:fs/promises'
 import { createReadStream } from 'node:fs'
 import { extname, join, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const root = fileURLToPath(new URL('.', import.meta.url))
 const dataDir = join(root, 'data')
@@ -12,6 +12,7 @@ const demoLogoDir = join(demoDataDir, 'logos')
 const distDir = join(root, 'dist')
 const port = Number(process.env.PORT || 8787)
 const priceCache = new Map()
+const isMainModule = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -683,8 +684,12 @@ const server = createServer(async (request, response) => {
   }
 })
 
-await ensureLocalDataFiles()
+export { consolidatePositions, inferStructure }
 
-server.listen(port, '127.0.0.1', () => {
-  console.log(`Portfolio Review is running at http://127.0.0.1:${port}`)
-})
+if (isMainModule) {
+  await ensureLocalDataFiles()
+
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`Portfolio Review is running at http://127.0.0.1:${port}`)
+  })
+}
