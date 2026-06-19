@@ -6,7 +6,7 @@ It helps you review public-market holdings, cash, sector/theme allocation, conce
 options exposure, live/fallback price status, and performance without a database, account system, or
 hosted backend.
 
-![Portfolio Review Local dashboard](docs/dashboard.png)
+![Seeded example portfolio dashboard](docs/dashboard.png)
 
 ## Why Use This
 
