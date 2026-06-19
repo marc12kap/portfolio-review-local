@@ -101,6 +101,13 @@ type PriceIssue = {
 type Portfolio = {
   setupRequired?: false
   settings: Settings
+  yearStartReview: {
+    required: boolean
+    currentYear: string
+    currentYearStart: string
+    periodStart: string | null
+    periodStartYear: string | null
+  }
   source: {
     source: 'demo' | 'user'
     isDemo: boolean
@@ -373,6 +380,20 @@ async function postReset(mode: ResetMode) {
     const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
     const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
     throw new Error([payload.error || 'Unable to reset portfolio.', details].filter(Boolean).join('\n'))
+  }
+  return (await response.json()) as PortfolioResponse
+}
+
+async function postYearStartReset() {
+  const response = await fetch('/api/year-start/reset', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({}),
+  })
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
+    throw new Error([payload.error || 'Unable to reset year-start baseline.', details].filter(Boolean).join('\n'))
   }
   return (await response.json()) as PortfolioResponse
 }
@@ -1065,6 +1086,79 @@ function SampleDataNotice({ onEdit }: { onEdit: () => void }) {
       <button type="button" onClick={onEdit}>
         Start From Your Data
       </button>
+    </section>
+  )
+}
+
+function YearStartReviewNotice({
+  review,
+  onEdit,
+  onDismiss,
+  onReset,
+  resetting,
+  error,
+}: {
+  review: Portfolio['yearStartReview']
+  onEdit: () => void
+  onDismiss: () => void
+  onReset: () => void
+  resetting: boolean
+  error: string
+}) {
+  const [confirming, setConfirming] = useState(false)
+  const [confirmation, setConfirmation] = useState('')
+  const allowed = confirmation.trim() === 'RESET YEAR'
+
+  return (
+    <section className="year-start-notice" aria-label="Year-start portfolio review">
+      <div>
+        <strong>Review your {review.currentYear} baseline</strong>
+        <p>
+          This book still starts in {review.periodStartYear || 'a prior year'}. Update holdings and cash
+          first, then reset the YTD baseline when the current book value is right.
+        </p>
+      </div>
+      <div className="year-start-actions">
+        <button type="button" onClick={onEdit} disabled={resetting}>
+          <Edit3 size={15} aria-hidden="true" />
+          Edit Holdings
+        </button>
+        <button type="button" onClick={() => setConfirming(true)} disabled={resetting}>
+          <RotateCcw size={15} aria-hidden="true" />
+          Reset Baseline
+        </button>
+        <button type="button" onClick={onDismiss} disabled={resetting}>
+          Dismiss
+        </button>
+      </div>
+      {confirming ? (
+        <div className="year-start-confirmation">
+          <label>
+            Type <b>RESET YEAR</b> after holdings, cash, and current value are updated
+            <input
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              autoFocus
+            />
+          </label>
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                setConfirming(false)
+                setConfirmation('')
+              }}
+              disabled={resetting}
+            >
+              Cancel
+            </button>
+            <button type="button" onClick={onReset} disabled={!allowed || resetting}>
+              {resetting ? 'Resetting...' : 'Confirm Reset'}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {error ? <p className="year-start-error">{error}</p> : null}
     </section>
   )
 }
@@ -2128,6 +2222,9 @@ function App() {
   const [health, setHealth] = useState<HealthCheck | null>(null)
   const [healthLoading, setHealthLoading] = useState(false)
   const [healthError, setHealthError] = useState('')
+  const [yearStartResetting, setYearStartResetting] = useState(false)
+  const [yearStartError, setYearStartError] = useState('')
+  const [dismissedYearStartKey, setDismissedYearStartKey] = useState('')
   const [showPrivate, setShowPrivate] = useState(false)
   const [gettingStartedDismissed, setGettingStartedDismissed] = useState(() =>
     readStoredFlag(gettingStartedDismissedKey),
@@ -2174,6 +2271,23 @@ function App() {
   function openHealth() {
     setHealthOpen(true)
     void loadHealth()
+  }
+
+  async function resetYearStart() {
+    setYearStartResetting(true)
+    setYearStartError('')
+    try {
+      const response = await postYearStartReset()
+      if ('setupRequired' in response && response.setupRequired) {
+        throw new Error('Year-start reset did not finish. Try again or check local file permissions.')
+      }
+      removeStoredFlag(`portfolio-review-year-start-dismissed-${response.yearStartReview.currentYear}`)
+      acceptPortfolio(response)
+    } catch (resetError) {
+      setYearStartError(resetError instanceof Error ? resetError.message : 'Year-start reset failed.')
+    } finally {
+      setYearStartResetting(false)
+    }
   }
 
   useEffect(() => {
@@ -2244,6 +2358,11 @@ function App() {
   const hasHoldings = portfolio.holdings.length > 0
   const showGettingStarted = !gettingStartedDismissed
   const sampleDataActive = portfolio.source?.isDemo
+  const yearStartDismissedKey = `portfolio-review-year-start-dismissed-${portfolio.yearStartReview.currentYear}`
+  const showYearStartReview =
+    portfolio.yearStartReview.required &&
+    dismissedYearStartKey !== yearStartDismissedKey &&
+    !readStoredFlag(yearStartDismissedKey)
 
   return (
     <>
@@ -2279,6 +2398,20 @@ function App() {
         </header>
 
         {sampleDataActive ? <SampleDataNotice onEdit={() => setEditorOpen(true)} /> : null}
+
+        {showYearStartReview ? (
+          <YearStartReviewNotice
+            review={portfolio.yearStartReview}
+            onEdit={() => setEditorOpen(true)}
+            onDismiss={() => {
+              writeStoredFlag(yearStartDismissedKey, true)
+              setDismissedYearStartKey(yearStartDismissedKey)
+            }}
+            onReset={() => void resetYearStart()}
+            resetting={yearStartResetting}
+            error={yearStartError}
+          />
+        ) : null}
 
         <section className="metric-strip" aria-label="Portfolio metrics">
           <div>

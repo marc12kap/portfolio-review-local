@@ -1132,6 +1132,117 @@ a {
   font-size: 10px;
 }
 
+.year-start-notice {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin: 16px 37px 0;
+  padding: 14px;
+  border: 1px solid #d9c29e;
+  border-radius: 6px;
+  background: #fffaf0;
+}
+
+.year-start-notice strong {
+  display: block;
+  color: #303846;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.year-start-notice p {
+  margin: 5px 0 0;
+  color: #735f3b;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.year-start-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.year-start-actions button,
+.year-start-confirmation button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  border: 1px solid #d9d4cb;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #384252;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.year-start-actions button:nth-child(2),
+.year-start-confirmation button:last-child {
+  border-color: #9a6b2f;
+  background: #9a6b2f;
+  color: #ffffff;
+}
+
+.year-start-actions button:disabled,
+.year-start-confirmation button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.year-start-confirmation {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding-top: 12px;
+  border-top: 1px solid #e6d8bd;
+}
+
+.year-start-confirmation label {
+  display: grid;
+  gap: 6px;
+  color: #6f7987;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.year-start-confirmation label b {
+  color: #9a6b2f;
+  letter-spacing: 0;
+}
+
+.year-start-confirmation input {
+  width: min(100%, 280px);
+  min-height: 36px;
+  border: 1px solid #d8d4cc;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #313947;
+  font-size: 13px;
+  font-weight: 750;
+  outline: 0;
+  padding: 0 9px;
+}
+
+.year-start-confirmation div {
+  display: flex;
+  gap: 8px;
+}
+
+.year-start-error {
+  grid-column: 1 / -1;
+  color: #a84845 !important;
+}
+
 .welcome-backdrop {
   position: fixed;
   inset: 0;
@@ -2301,6 +2412,8 @@ a {
   .import-preview-grid,
   .import-confirmation,
   .health-grid,
+  .year-start-notice,
+  .year-start-confirmation,
   .backup-panel-heading,
   .backup-row,
   .reset-confirmation {
@@ -2311,6 +2424,16 @@ a {
   .backup-panel-heading button,
   .backup-row button,
   .reset-confirmation button {
+    width: 100%;
+  }
+
+  .year-start-actions,
+  .year-start-confirmation div {
+    justify-content: stretch;
+  }
+
+  .year-start-actions button,
+  .year-start-confirmation button {
     width: 100%;
   }
 }

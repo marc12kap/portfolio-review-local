@@ -15,9 +15,11 @@ import {
   normalizePerformanceForReport,
   normalizeReportingDates,
   previewPortfolioImport,
+  resetYearStartBaseline,
   restoreLocalBackup,
   validatePositions,
   validateSettings,
+  yearStartReviewForSettings,
 } from '../server.mjs'
 
 const settings = (overrides = {}) => ({
@@ -850,5 +852,71 @@ describe('local health check', () => {
     assert.equal(result.source.source, 'user')
     assert.equal(result.priceCache.recordCount, 1)
     assert.deepEqual(result.nextSteps, ['No action needed.'])
+  })
+})
+
+describe('year-start review', () => {
+  it('detects stale period starts from a previous calendar year', () => {
+    assert.deepEqual(
+      yearStartReviewForSettings({ periodStart: '2025-01-01' }, '2026-06-19'),
+      {
+        required: true,
+        currentYear: '2026',
+        currentYearStart: '2026-01-01',
+        periodStart: '2025-01-01',
+        periodStartYear: '2025',
+      },
+    )
+
+    assert.equal(
+      yearStartReviewForSettings({ periodStart: '2026-01-01' }, '2026-06-19').required,
+      false,
+    )
+  })
+
+  it('backs up settings and performance before resetting current-year baseline', async () => {
+    const dir = await tempDataDir()
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({
+        accountName: 'Year Start Book',
+        benchmarkName: 'S&P 500',
+        benchmarkTicker: 'SPY',
+        asOfDate: '2025-12-31',
+        periodStart: '2025-01-01',
+        periodEnd: '2025-12-31',
+        accountTotal: 0,
+        cashBalance: 250,
+        baselineInvested: 900,
+      }),
+    )
+    await writeFile(
+      join(dir, 'positions.csv'),
+      'ticker,company,underlying,assetType,side,quantity,marketValue,sector\nAAPL,Apple,AAPL,stock,long,,750,Technology\n',
+    )
+    await writeFile(join(dir, 'performance.csv'), 'date,returnPct,benchmarkReturnPct\n2025-01-01,0,0\n')
+    await writeFile(
+      join(dir, 'schema.json'),
+      JSON.stringify({
+        version: 1,
+        migrations: [{ version: 1, appliedAt: '2026-06-19T13:00:00.000Z', changes: [] }],
+      }),
+    )
+
+    await resetYearStartBaseline(dir, async () => ({}))
+    const nextSettings = JSON.parse(await readFile(join(dir, 'settings.json'), 'utf8'))
+    const nextPerformance = await readFile(join(dir, 'performance.csv'), 'utf8')
+    const backupFiles = await readdir(join(dir, 'backups'))
+    const currentYear = new Date().getFullYear()
+
+    assert.equal(nextSettings.periodStart, `${currentYear}-01-01`)
+    assert.equal(nextSettings.baselineInvested, 1000)
+    assert.equal(nextSettings.cashBalance, 250)
+    assert.match(
+      nextPerformance,
+      new RegExp(`^date,returnPct,benchmarkReturnPct\\n${currentYear}-01-01,0,\\n${currentYear}-\\d{2}-\\d{2},0,\\n$`),
+    )
+    assert.equal(backupFiles.some((fileName) => fileName.startsWith('settings-')), true)
+    assert.equal(backupFiles.some((fileName) => fileName.startsWith('performance-')), true)
   })
 })
