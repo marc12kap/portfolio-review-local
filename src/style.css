@@ -580,17 +580,25 @@ a {
 
 .welcome-list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  gap: 7px;
   margin-top: 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.welcome-list li {
+  min-width: 0;
 }
 
 .welcome-list button,
 .welcome-list a {
   display: grid;
-  align-content: start;
-  gap: 5px;
-  min-height: 96px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 10px;
+  row-gap: 3px;
+  width: 100%;
+  min-height: 66px;
   padding: 12px;
   border: 1px solid #d8d4cc;
   border-radius: 4px;
@@ -601,19 +609,24 @@ a {
 }
 
 .welcome-list b {
-  width: fit-content;
-  padding: 3px 6px;
-  border-radius: 999px;
-  background: #efe9df;
+  grid-row: span 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 25px;
+  height: 25px;
+  border: 1px solid #dcc7a9;
+  border-radius: 50%;
+  background: #fffaf2;
   color: #8f6633;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 950;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   line-height: 1;
-  text-transform: uppercase;
 }
 
 .welcome-list .done b {
+  border-color: #b9d8ca;
   background: #eef7f3;
   color: #2f725f;
 }
@@ -626,7 +639,7 @@ a {
 
 .welcome-list small {
   color: #74808f;
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 650;
   line-height: 1.35;
 }
@@ -1570,10 +1583,6 @@ a {
   .app-controls {
     top: 10px;
     right: 10px;
-  }
-
-  .welcome-list {
-    grid-template-columns: 1fr;
   }
 }
 
