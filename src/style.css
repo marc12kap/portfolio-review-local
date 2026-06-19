@@ -917,6 +917,58 @@ a {
   color: #a84845;
 }
 
+.price-issue-section {
+  padding-top: 24px;
+  background: #fffafa;
+}
+
+.price-issue-list {
+  display: grid;
+  gap: 7px;
+  margin-top: 14px;
+}
+
+.price-issue-row {
+  display: grid;
+  grid-template-columns: 80px 72px minmax(180px, 1fr) 112px;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  padding: 8px 10px;
+  border: 1px solid #ead4d2;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #697484;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.price-issue-row b {
+  color: #a84845;
+  font-weight: 950;
+}
+
+.price-issue-row strong {
+  color: #414854;
+  font-weight: 950;
+  text-align: right;
+}
+
+.price-issue-section button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  margin-top: 12px;
+  border: 1px solid #a84845;
+  border-radius: 4px;
+  background: #a84845;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .summary-row {
   display: grid;
   grid-template-columns: 1fr 90px;

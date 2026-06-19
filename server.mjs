@@ -689,8 +689,9 @@ function isOptionLike(position) {
 function consolidatePositions(positions, prices, settings) {
   const grouped = new Map()
   const optionExposureMap = new Map()
+  const priceIssues = []
 
-  for (const position of positions) {
+  for (const [index, position] of positions.entries()) {
     const underlying = cleanTicker(position.underlying || position.ticker)
     if (!underlying) continue
 
@@ -708,6 +709,18 @@ function consolidatePositions(positions, prices, settings) {
     const usesLivePrice = Boolean(price && hasQuantity)
     const computedValue = usesLivePrice ? sideSign * quantity * multiplier * price : marketValue
     const optionType = ['call', 'put'].includes(position.optionType) ? position.optionType : 'option'
+
+    if (hasQuantity && !price && !hasFallbackMarketValue) {
+      priceIssues.push({
+        rowNumber: index + 1,
+        ticker: position.ticker || underlying,
+        underlying,
+        company: position.company || underlying,
+        quantity,
+        assetType: position.assetType || 'stock',
+        message: 'No live price was found and no fallback market value is set.',
+      })
+    }
 
     if (!grouped.has(underlying)) {
       grouped.set(underlying, {
@@ -814,6 +827,7 @@ function consolidatePositions(positions, prices, settings) {
 
   return {
     holdings,
+    priceIssues,
     optionExposures: [...optionExposureMap.values()]
       .map((exposure) => ({
         ticker: exposure.ticker,

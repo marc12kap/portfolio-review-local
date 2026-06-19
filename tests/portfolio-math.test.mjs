@@ -113,6 +113,45 @@ describe('consolidatePositions', () => {
     assert.equal(byTicker(result, 'ABC').weight, 20)
   })
 
+  it('surfaces quantity rows with no live price and no fallback market value', () => {
+    const result = consolidatePositions(
+      [
+        position({
+          ticker: 'NOPE',
+          company: 'Bad Ticker Corp',
+          underlying: 'NOPE',
+          quantity: '12',
+        }),
+      ],
+      {},
+      settings({ accountTotal: 10_000, baselineInvested: 10_000 }),
+    )
+
+    assert.equal(result.holdings.length, 0)
+    assert.deepEqual(result.priceIssues, [
+      {
+        rowNumber: 1,
+        ticker: 'NOPE',
+        underlying: 'NOPE',
+        company: 'Bad Ticker Corp',
+        quantity: 12,
+        assetType: 'stock',
+        message: 'No live price was found and no fallback market value is set.',
+      },
+    ])
+  })
+
+  it('does not report a price issue when fallback market value is available', () => {
+    const result = consolidatePositions(
+      [position({ ticker: 'NOPE', underlying: 'NOPE', quantity: '12', marketValue: '1200' })],
+      {},
+      settings({ accountTotal: 10_000, baselineInvested: 10_000 }),
+    )
+
+    assert.equal(result.priceIssues.length, 0)
+    assert.equal(byTicker(result, 'NOPE').priceStatus, 'fallback')
+  })
+
   it('applies default option multipliers for long call exposure', () => {
     const result = consolidatePositions(
       [
