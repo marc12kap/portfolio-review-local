@@ -1,0 +1,15 @@
+{
+  "name": "Portfolio Review",
+  "short_name": "Portfolio",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#303846",
+  "background_color": "#fbfbfa",
+  "display": "standalone"
+}
