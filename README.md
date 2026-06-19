@@ -135,8 +135,19 @@ market values show `Missing`.
 
 ## Zip Handoff
 
-Zip or download the repository source. You can omit `node_modules`; `npm run local` will install
-dependencies, build `dist`, and start the local server.
+When GitHub Releases are available, non-developers should download the release ZIP from the
+repository's Releases page instead of cloning with Git. Release ZIPs include the source code,
+sample data, setup docs, and package lockfile. They exclude `node_modules`, `dist`, and private
+local working data from `data/`.
+
+Maintainers can build the same source ZIP locally:
+
+```bash
+npm run release:zip
+```
+
+The generated ZIP is written to `release/`. It still expects the user to run `npm run local`, which
+installs dependencies, builds `dist`, and starts the local server.
 
 ## License
 
