@@ -12,7 +12,7 @@ hosted backend.
 
 - Runs on your computer.
 - Stores your working portfolio files in ignored local `data/` files.
-- Starts from demo data, a blank book, or a pasted positions CSV.
+- Starts from fictional demo data, a blank book, or a pasted positions CSV.
 - Keeps private dollar values hidden by default behind the eye icon.
 - Uses editable files instead of a brokerage login or cloud database.
 - Works with common stock rows, option rows, spreads, cash, fallback market values, and optional
@@ -39,7 +39,7 @@ http://127.0.0.1:8787
 
 On first run, choose one of:
 
-- `Use Demo Data`: copy the sample portfolio from `demo-data/sample`.
+- `Use Demo Data`: copy the fictional sample investment portfolio from `demo-data/sample`.
 - `Start Blank`: create empty local CSV/JSON files.
 - `Import CSV`: initialize from pasted `positions.csv` contents.
 
