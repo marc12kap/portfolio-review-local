@@ -258,7 +258,12 @@ Prices:
 Logos:
 
 - The browser loads logos from local routes such as `/api/logo/SNDK`.
-- The server tries `logoUrl`, then favicon fallbacks from the same domain.
+- The server uses local cached logos first, then explicit `logoUrl` values from `positions.csv`.
+- Explicit Clearbit URLs can fall back to the same-company favicon if Clearbit fails.
+- Explicit Google favicon URLs are used as-is and are not converted into unrelated Google/Clearbit
+  logo lookups.
+- Set `logoUrl` to `initials`, `none`, or `no-logo` when a holding is private, ambiguous, or should
+  not use automated public logo lookup.
 - Successful images are cached under `data/logos`.
 - If no logo is found, the report shows ticker initials instead of a broken image.
 

@@ -740,23 +740,51 @@ function extractDomain(value) {
     if (parsed.hostname === 'logo.clearbit.com') {
       return parsed.pathname.replace(/^\//, '').split('/')[0]
     }
+    if (parsed.hostname === 'www.google.com' && parsed.pathname === '/s2/favicons') {
+      return parsed.searchParams.get('domain') || ''
+    }
     return parsed.hostname.replace(/^www\./, '')
   } catch {
     return ''
   }
 }
 
-function logoCandidatesForPosition(position) {
-  const candidates = []
-  const domain = extractDomain(position.logoUrl)
+function logoLookupDisabled(position) {
+  const logoUrl = String(position?.logoUrl || '')
+    .trim()
+    .toLowerCase()
+  return ['none', 'initials', 'no-logo'].includes(logoUrl)
+}
 
-  if (position.logoUrl && /^https:\/\//i.test(position.logoUrl)) {
-    candidates.push(position.logoUrl)
+function logoReferenceProvider(value) {
+  try {
+    const parsed = new URL(value)
+    if (parsed.hostname === 'logo.clearbit.com') return 'clearbit'
+    if (parsed.hostname === 'www.google.com' && parsed.pathname === '/s2/favicons') return 'google-favicon'
+    return 'direct'
+  } catch {
+    return ''
+  }
+}
+
+function logoCandidatesForPosition(position) {
+  if (logoLookupDisabled(position)) return []
+
+  const candidates = []
+  const logoUrl = String(position?.logoUrl || '').trim()
+  const domain = extractDomain(logoUrl)
+  const provider = logoReferenceProvider(logoUrl)
+
+  if (logoUrl && /^https:\/\//i.test(logoUrl)) {
+    candidates.push(logoUrl)
   }
 
-  if (domain) {
-    candidates.push(`https://logo.clearbit.com/${domain}`)
+  if (domain && provider !== 'google-favicon') {
     candidates.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`)
+  }
+
+  if (domain && provider === 'clearbit') {
+    candidates.push(`https://logo.clearbit.com/${domain}`)
   }
 
   return [...new Set(candidates)]
@@ -781,6 +809,8 @@ async function findCachedLogo(ticker) {
 async function fetchLogo(position) {
   await ensureLocalDataDirectories()
   const ticker = normalizeLogoTicker(position.underlying || position.ticker)
+  if (logoLookupDisabled(position)) return null
+
   const cached = await findCachedLogo(ticker)
   if (cached) return cached
 
@@ -1423,6 +1453,7 @@ export {
   consolidatePositions,
   inferStructure,
   isoDateInTimeZone,
+  logoCandidatesForPosition,
   migrateLocalDataFiles,
   normalizePerformanceForReport,
   normalizeReportingDates,

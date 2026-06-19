@@ -100,7 +100,8 @@ Rules:
   `Energy`, `Private Markets`, or `Cash & Equivalents`.
 - `structure`: optional report wording, such as `Common shares`, `Broad market ETF`, or
   `Long call position`.
-- `logoUrl`: optional trusted logo URL. Leave blank if unsure.
+- `logoUrl`: optional trusted logo URL. Use `initials`, `none`, or `no-logo` when the holding is
+  private, ambiguous, or should not use automated public logo lookup.
 
 ## Settings Contract
 

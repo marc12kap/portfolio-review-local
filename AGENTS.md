@@ -88,6 +88,10 @@ non-sensitive holdings data such as ticker, company, shares/contracts, average c
 known, sector/theme, option type, strike, expiry, and premium. Do not ask for brokerage passwords or
 account logins. Summarize assumptions and preview proposed local files before writing anything.
 
+For logos, prefer explicit trusted `logoUrl` values. Use `initials`, `none`, or `no-logo` for
+private, ambiguous, stale, or low-confidence holdings so the app shows a clean initials fallback
+instead of a polished but wrong logo.
+
 Keep `data/source.json` aligned with the active data state: demo setup/reset should mark `demo`;
 blank setup, import setup, and user saves should mark `user`.
 

@@ -8,6 +8,7 @@ import {
   consolidatePositions,
   inferStructure,
   isoDateInTimeZone,
+  logoCandidatesForPosition,
   migrateLocalDataFiles,
   normalizePerformanceForReport,
   normalizeReportingDates,
@@ -495,6 +496,32 @@ describe('reporting date defaults', () => {
         { date: '2026-06-19', returnPct: 2.5, benchmarkReturnPct: 1.2 },
       ],
     )
+  })
+})
+
+describe('logo sourcing', () => {
+  it('uses explicit logo sources and same-company favicon fallback for Clearbit references', () => {
+    assert.deepEqual(
+      logoCandidatesForPosition({ logoUrl: 'https://logo.clearbit.com/apple.com' }),
+      [
+        'https://logo.clearbit.com/apple.com',
+        'https://www.google.com/s2/favicons?domain=apple.com&sz=128',
+      ],
+    )
+  })
+
+  it('does not turn explicit Google favicon sources into Google or Clearbit candidates', () => {
+    assert.deepEqual(
+      logoCandidatesForPosition({
+        logoUrl: 'https://www.google.com/s2/favicons?domain=spacex.com&sz=128',
+      }),
+      ['https://www.google.com/s2/favicons?domain=spacex.com&sz=128'],
+    )
+  })
+
+  it('allows private or low-confidence rows to use clean initials fallback', () => {
+    assert.deepEqual(logoCandidatesForPosition({ logoUrl: 'initials' }), [])
+    assert.deepEqual(logoCandidatesForPosition({ logoUrl: 'none' }), [])
   })
 })
 
