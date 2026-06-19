@@ -132,6 +132,14 @@ a {
   text-transform: none;
 }
 
+.setup-heading p {
+  margin: 8px 0 0;
+  color: #6f7987;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .setup-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -144,6 +152,8 @@ a {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex-direction: column;
+  gap: 3px;
   min-height: 38px;
   border: 1px solid #2f725f;
   border-radius: 4px;
@@ -154,16 +164,49 @@ a {
   text-transform: uppercase;
 }
 
+.setup-actions button {
+  align-items: flex-start;
+  min-height: 78px;
+  padding: 12px;
+  text-align: left;
+}
+
+.setup-actions button b {
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.setup-actions button span {
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  text-transform: none;
+}
+
 .setup-actions button:nth-child(2) {
   border-color: #cfc9bd;
   background: #fbfbfa;
   color: #384252;
 }
 
+.setup-actions button:nth-child(2) span {
+  color: #6f7987;
+}
+
 .csv-import {
   display: grid;
   gap: 8px;
   margin-top: 18px;
+}
+
+.csv-import small {
+  color: #6f7987;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0;
+  line-height: 1.45;
+  text-transform: none;
 }
 
 .csv-import textarea {

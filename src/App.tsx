@@ -1101,21 +1101,32 @@ function FirstRunSetup({ onReady }: { onReady: (portfolio: Portfolio) => void })
         <div className="setup-heading">
           <span>Local Setup</span>
           <strong>Choose how to start</strong>
+          <p>
+            The app creates editable files on this computer. You can change or reset them later.
+          </p>
         </div>
         <div className="setup-actions">
           <button type="button" onClick={() => void setup('demo')} disabled={saving}>
-            Use Demo Data
+            <b>Use Demo Data</b>
+            <span>Load a fictional portfolio so you can explore the dashboard first.</span>
           </button>
           <button type="button" onClick={() => void setup('blank')} disabled={saving}>
-            Start Blank
+            <b>Start Blank</b>
+            <span>Create empty local files and add your own holdings from scratch.</span>
           </button>
         </div>
         <label className="csv-import">
           Import positions CSV
+          <small>
+            Paste a CSV with headers like ticker, company, underlying, assetType, side, quantity,
+            averageCost, multiplier, marketValue, optionType, strikePrice, expiryDate, premium,
+            sector, structure, and logoUrl.
+          </small>
           <textarea
             value={positionsCsv}
             onChange={(event) => setPositionsCsv(event.target.value)}
-            placeholder="Paste positions.csv contents here"
+            placeholder={`ticker,company,underlying,assetType,side,quantity,averageCost,marketValue,sector
+AAPL,Apple Inc.,AAPL,stock,long,25,180,,Mega-Cap Technology`}
           />
         </label>
         <button
