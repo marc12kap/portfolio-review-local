@@ -87,6 +87,7 @@ data/positions.csv
 data/settings.json
 data/performance.csv
 data/source.json
+data/schema.json
 data/logos/
 data/backups/
 ```
@@ -96,6 +97,23 @@ deliberately share them.
 
 When you save from the in-app editor, the server writes timestamped backups to `data/backups/`.
 Resetting to blank or demo data also creates backups before replacing local files.
+
+## Local Data Migrations
+
+The app tracks the local file schema in ignored `data/schema.json`. When newer source code expects
+additional CSV columns or settings fields, the server runs safe migrations before reading or saving
+portfolio data.
+
+Migrations are designed to:
+
+- Create timestamped backups in `data/backups/` before changing affected files.
+- Add missing `positions.csv` and `performance.csv` columns with blank/default values.
+- Add missing `settings.json` fields with safe defaults.
+- Preserve extra CSV columns during the migration rewrite.
+- Stop with a clear error if a file cannot be migrated safely, such as invalid JSON.
+
+To recover from a bad local edit, copy the newest relevant file from `data/backups/` back to
+`data/`, then restart the app.
 
 ## Privacy Model
 

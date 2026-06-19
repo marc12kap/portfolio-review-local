@@ -20,6 +20,7 @@ Help the user run or improve the app without taking ownership of their portfolio
 - `data/`: ignored local portfolio data created on first run
 - `data/backups/`: ignored timestamped backups created before local saves
 - `data/source.json`: ignored local metadata that tracks demo versus user-owned data
+- `data/schema.json`: ignored local metadata that tracks local CSV/JSON schema version
 - `demo-data/sample/`: committed demo defaults used to seed missing local data
 - `.github/workflows/ci.yml`: GitHub Actions validation
 - `README.md`: user-facing overview
@@ -60,6 +61,22 @@ type, strike, expiry, and premium. Do not ask for brokerage passwords or account
 
 Keep `data/source.json` aligned with the active data state: demo setup/reset should mark `demo`;
 blank setup, import setup, and user saves should mark `user`.
+
+## Local Data Migrations
+
+`server.mjs` owns local schema migrations through `migrateLocalDataFiles()`.
+
+When adding or changing local fields:
+
+1. Bump or extend the migration logic before code starts requiring the new field.
+2. Back up affected runtime files before writing.
+3. Add missing CSV columns with blank/default values and preserve unknown columns when feasible.
+4. Add missing settings fields with safe defaults.
+5. Add or update tests for old local files, successful migration, and failure behavior.
+6. Document user-visible changes in the README.
+
+If migration fails, do not overwrite local data. Surface a clear error and tell the user to restore
+from `data/backups/` or fix the broken local file.
 
 ## If Node Or npm Is Missing
 
