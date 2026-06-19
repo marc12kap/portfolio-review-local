@@ -108,8 +108,8 @@ Recommended first-time flow:
    spreadsheet, screenshot transcription, or notes into the local file format.
 5. Put each holding into a useful `sector` or theme bucket, such as `Mega-Cap Technology`, `Broad
    Market ETFs`, `Energy`, `Cash & Equivalents`, or your own custom labels.
-6. Confirm available cash, beginning book value, performance CSV history, and price badges before
-   relying on the report.
+6. Confirm available cash, beginning book value, optional performance CSV history, and price badges
+   before relying on the report.
 
 While demo data is active, the dashboard keeps a sample-data notice visible so you do not mistake
 the seeded portfolio for your own book. Starting blank, importing CSV data, or saving your own edits
@@ -121,7 +121,7 @@ anything is replaced.
 
 ## What The Dashboard Shows
 
-- Year-to-date portfolio return.
+- Year-to-date portfolio return through today.
 - Net invested and cash allocation.
 - Sector/theme allocation.
 - Top holding and top-five concentration.
@@ -225,6 +225,10 @@ to plain numbers such as `12500.5`. Quantity fields are for shares or contracts,
 
 ## Performance And Benchmarks
 
+The dashboard values current holdings as of today. It does not reconstruct past holdings from a
+transaction ledger. Year-to-date return is calculated from today's current book value versus the
+beginning book value you provide.
+
 `data/performance.csv` supports:
 
 | Column | Meaning |
@@ -233,10 +237,10 @@ to plain numbers such as `12500.5`. Quantity fields are for shares or contracts,
 | `returnPct` | Portfolio cumulative return percentage for that date. |
 | `benchmarkReturnPct` | Optional benchmark cumulative return percentage for that date. |
 
-If `benchmarkReturnPct` is present for more than one row, the performance chart displays a dashed
-benchmark line labeled by `benchmarkName` and `benchmarkTicker` from `data/settings.json`. If
-benchmark returns are missing or blank, the chart shows only the portfolio line. `benchmarkTicker`
-defaults to `SPY` when omitted.
+Historical chart points are optional and user-maintained. If `benchmarkReturnPct` is present for
+more than one row, the performance chart displays a dashed benchmark line labeled by
+`benchmarkName` and `benchmarkTicker` from `data/settings.json`. If benchmark returns are missing or
+blank, the chart shows only the portfolio line. `benchmarkTicker` defaults to `SPY` when omitted.
 
 ## Prices And Logos
 

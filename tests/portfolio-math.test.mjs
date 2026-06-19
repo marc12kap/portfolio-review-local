@@ -8,6 +8,8 @@ import {
   consolidatePositions,
   inferStructure,
   migrateLocalDataFiles,
+  normalizePerformanceForReport,
+  normalizeReportingDates,
   validatePositions,
   validateSettings,
 } from '../server.mjs'
@@ -435,6 +437,58 @@ describe('benchmark settings', () => {
     assert.equal(cleanBenchmarkTicker(''), 'SPY')
     assert.equal(cleanBenchmarkTicker(undefined), 'SPY')
     assert.equal(cleanBenchmarkTicker(' voo '), 'VOO')
+  })
+})
+
+describe('reporting date defaults', () => {
+  it('uses today for current report dates even when saved dates are stale', () => {
+    assert.deepEqual(
+      normalizeReportingDates(
+        {
+          asOfDate: '2026-01-15',
+          periodStart: '2026-01-01',
+          periodEnd: '2026-01-15',
+        },
+        '2026-06-19',
+      ),
+      {
+        asOfDate: '2026-06-19',
+        periodStart: '2026-01-01',
+        periodEnd: '2026-06-19',
+      },
+    )
+  })
+
+  it('falls back to the current year start when period start is missing or future dated', () => {
+    assert.deepEqual(
+      normalizeReportingDates({ periodStart: '2027-01-01' }, '2026-06-19'),
+      {
+        asOfDate: '2026-06-19',
+        periodStart: '2026-01-01',
+        periodEnd: '2026-06-19',
+      },
+    )
+  })
+
+  it('preserves user-supplied performance history and appends today for the current report', () => {
+    assert.deepEqual(
+      normalizePerformanceForReport(
+        [
+          { date: '2026-01-01', returnPct: 0, benchmarkReturnPct: 0 },
+          { date: '2026-03-31', returnPct: 2.5, benchmarkReturnPct: 1.2 },
+        ],
+        {
+          periodStart: '2026-01-01',
+          periodEnd: '2026-06-19',
+          asOfDate: '2026-06-19',
+        },
+      ),
+      [
+        { date: '2026-01-01', returnPct: 0, benchmarkReturnPct: 0 },
+        { date: '2026-03-31', returnPct: 2.5, benchmarkReturnPct: 1.2 },
+        { date: '2026-06-19', returnPct: 2.5, benchmarkReturnPct: 1.2 },
+      ],
+    )
   })
 })
 
