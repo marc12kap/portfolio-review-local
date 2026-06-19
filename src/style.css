@@ -140,6 +140,23 @@ a {
   line-height: 1.45;
 }
 
+.setup-health-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 14px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #d9d4cb;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #384252;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
 .setup-actions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -593,6 +610,194 @@ a {
 
 .app-controls button:last-child {
   padding: 0 12px;
+}
+
+.health-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  justify-content: flex-end;
+  background: rgba(34, 40, 50, 0.18);
+}
+
+.health-panel {
+  width: min(100%, 520px);
+  height: 100vh;
+  overflow: auto;
+  border-left: 1px solid #d7d3cb;
+  background: #fbfbfa;
+  box-shadow: -28px 0 60px rgba(35, 42, 52, 0.18);
+}
+
+.health-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 24px 26px 20px;
+  border-bottom: 1px solid #dcd8cf;
+  background: #fbfbfa;
+}
+
+.health-header span {
+  color: #2b735e;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.health-header h2 {
+  margin: 4px 0 0;
+  color: #303846;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 400;
+}
+
+.health-header button {
+  width: 34px;
+  padding: 0;
+}
+
+.health-summary {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  margin: 20px 26px 14px;
+  padding: 14px;
+  border: 1px solid #dcd8cf;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.health-summary.is-ok {
+  border-color: #c6ded2;
+  background: #f4fbf7;
+}
+
+.health-summary.needs-attention {
+  border-color: #dfc1c0;
+  background: #fff8f7;
+}
+
+.health-summary strong {
+  display: block;
+  color: #303846;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.health-summary p {
+  margin: 4px 0 0;
+  color: #697484;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.health-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  margin: 0 26px 14px;
+  padding: 0 12px;
+  border: 1px solid #d9d4cb;
+  border-radius: 4px;
+  background: #ffffff;
+  color: #384252;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.health-refresh:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.health-error {
+  margin-bottom: 14px;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 0 26px 16px;
+}
+
+.health-grid div {
+  min-height: 112px;
+  padding: 12px;
+  border: 1px solid #dcd8cf;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.health-grid div.is-ok {
+  border-color: #c6ded2;
+}
+
+.health-grid div.needs-attention {
+  border-color: #dfc1c0;
+}
+
+.health-grid span,
+.health-detail-list span,
+.health-next-steps strong {
+  display: block;
+  color: #6f7987;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.health-grid strong {
+  display: block;
+  margin-top: 8px;
+  color: #303846;
+  font-size: 16px;
+  font-weight: 950;
+}
+
+.health-grid small {
+  display: block;
+  margin-top: 5px;
+  color: #697484;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.health-detail-list,
+.health-next-steps {
+  display: grid;
+  gap: 8px;
+  padding: 0 26px 18px;
+}
+
+.health-detail-list div,
+.health-next-steps {
+  padding: 12px;
+  border: 1px solid #dcd8cf;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.health-detail-list p,
+.health-next-steps p {
+  margin: 5px 0 0;
+  color: #384252;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.45;
 }
 
 .report-header {
@@ -2034,6 +2239,7 @@ a {
   .ai-import-optional-grid,
   .import-preview-grid,
   .import-confirmation,
+  .health-grid,
   .backup-panel-heading,
   .backup-row,
   .reset-confirmation {
@@ -2067,6 +2273,7 @@ a {
 @media print {
   .app-controls,
   .editor-backdrop,
+  .health-backdrop,
   .welcome-backdrop {
     display: none !important;
   }
