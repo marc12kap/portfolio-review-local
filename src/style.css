@@ -532,6 +532,76 @@ a {
   padding-bottom: 14px;
 }
 
+.getting-started-section {
+  background: #ffffff;
+}
+
+.getting-started-section .section-heading {
+  grid-template-columns: auto minmax(30px, 1fr) auto;
+}
+
+.getting-started-section .section-heading button {
+  min-height: 28px;
+  padding: 0 9px;
+  border-color: #d7d3cb;
+  background: #fbfbfa;
+  color: #697484;
+  font-size: 10px;
+}
+
+.checklist-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.checklist-grid button,
+.checklist-grid a {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-height: 106px;
+  padding: 10px;
+  border: 1px solid #d8d4cc;
+  border-radius: 4px;
+  background: #fbfbfa;
+  color: #303846;
+  text-align: left;
+  text-decoration: none;
+}
+
+.checklist-grid b {
+  width: fit-content;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #efe9df;
+  color: #8f6633;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.checklist-grid .done b {
+  background: #eef7f3;
+  color: #2f725f;
+}
+
+.checklist-grid span {
+  font-size: 12px;
+  font-weight: 950;
+  line-height: 1.2;
+}
+
+.checklist-grid small {
+  color: #74808f;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .chart-panel {
   margin-top: 35px;
   overflow: hidden;
@@ -1449,6 +1519,10 @@ a {
 }
 
 @media (max-width: 820px) {
+  .checklist-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .settings-grid {
     grid-template-columns: 1fr;
   }
@@ -1458,6 +1532,10 @@ a {
   .app-controls {
     top: 10px;
     right: 10px;
+  }
+
+  .checklist-grid {
+    grid-template-columns: 1fr;
   }
 }
 
