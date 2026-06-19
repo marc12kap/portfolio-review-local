@@ -3,6 +3,7 @@ import { Edit3, Eye, EyeOff, Plus, RefreshCw, Save, Trash2, X } from 'lucide-rea
 
 type Settings = {
   accountName: string
+  benchmarkName: string
   asOfDate: string
   asOfLabel: string
   periodStart: string
@@ -229,7 +230,15 @@ function priceStatusTitle(holding: Holding) {
   return 'No live price or fallback market value is available for this holding.'
 }
 
-function PerformanceChart({ points, finalReturn }: { points: PerformancePoint[]; finalReturn: number }) {
+function PerformanceChart({
+  points,
+  finalReturn,
+  benchmarkName,
+}: {
+  points: PerformancePoint[]
+  finalReturn: number
+  benchmarkName: string
+}) {
   const width = 900
   const height = 178
   const paddingTop = 10
@@ -281,7 +290,7 @@ function PerformanceChart({ points, finalReturn }: { points: PerformancePoint[];
       {hasBenchmark ? (
         <div className="chart-legend" aria-label="Performance chart legend">
           <span><i className="portfolio-key" />Portfolio</span>
-          <span><i className="benchmark-key" />Benchmark</span>
+          <span><i className="benchmark-key" />{benchmarkName || 'Benchmark'}</span>
         </div>
       ) : null}
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Year-to-date return path">
@@ -624,6 +633,13 @@ function Editor({
             <input
               value={settings.accountName}
               onChange={(event) => setSettings({ ...settings, accountName: event.target.value })}
+            />
+          </label>
+          <label>
+            Benchmark name
+            <input
+              value={settings.benchmarkName}
+              onChange={(event) => setSettings({ ...settings, benchmarkName: event.target.value })}
             />
           </label>
           <label>
@@ -1068,7 +1084,11 @@ function App() {
             Cumulative return, {settings.periodStartLabel} - {settings.periodEndLabel}. Return is
             based on current book value versus starting book value.
           </p>
-          <PerformanceChart points={portfolio.performance} finalReturn={metrics.ytdReturnPercent} />
+          <PerformanceChart
+            points={portfolio.performance}
+            finalReturn={metrics.ytdReturnPercent}
+            benchmarkName={settings.benchmarkName}
+          />
           <div className="chart-captions">
             <span>{settings.periodStartLabel} - baseline 0%</span>
             <strong>

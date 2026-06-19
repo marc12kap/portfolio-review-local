@@ -1,5 +1,6 @@
 {
   "accountName": "Sample Investment Portfolio",
+  "benchmarkName": "S&P 500",
   "asOfDate": "2026-06-14",
   "periodStart": "2026-01-01",
   "periodEnd": "2026-06-14",
