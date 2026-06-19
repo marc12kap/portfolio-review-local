@@ -15,6 +15,9 @@ Help the user run or improve the app without taking ownership of their portfolio
 ## Key Files
 
 - `package.json`: scripts and dependencies
+- `run-local.bat`: Windows double-click launcher
+- `run-local.ps1`: Windows PowerShell launcher used by the batch file
+- `run-local.command`: macOS double-click launcher
 - `server.mjs`: local server and API routes
 - `src/`: React app
 - `data/`: ignored local portfolio data created on first run
@@ -26,6 +29,11 @@ Help the user run or improve the app without taking ownership of their portfolio
 - `README.md`: user-facing overview
 
 ## Run The App
+
+Beginner-friendly launchers:
+
+- Windows: double-click `run-local.bat`.
+- macOS: double-click `run-local.command`.
 
 From the repository root:
 
@@ -40,6 +48,21 @@ http://127.0.0.1:8787
 ```
 
 `npm run local` installs dependencies, builds the frontend, and starts the local server.
+
+If a script needs a different port, set `PORT` before running it:
+
+Windows PowerShell:
+
+```powershell
+$env:PORT=8788
+.\run-local.ps1
+```
+
+macOS:
+
+```bash
+PORT=8788 ./run-local.command
+```
 
 ## Help A User Replace Demo Data
 
@@ -80,7 +103,7 @@ from `data/backups/` or fix the broken local file.
 
 ## If Node Or npm Is Missing
 
-Help the user install Node.js LTS, then retry.
+Help the user install Node.js LTS, then retry the OS-specific launcher.
 
 Windows, if `winget` is available:
 
@@ -108,6 +131,14 @@ npm --version
 ```
 
 The user may need to reopen Claude Code or their terminal before those commands are available.
+
+If macOS blocks `run-local.command`, have the user Control-click it, choose `Open`, and confirm. If
+macOS says the file is not executable, run:
+
+```bash
+chmod +x run-local.command
+./run-local.command
+```
 
 ## If Port 8787 Is Busy
 

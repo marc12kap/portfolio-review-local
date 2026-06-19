@@ -23,7 +23,36 @@ local run instructions.
 
 ## Quick Start
 
-From the project folder:
+### Windows
+
+Double-click:
+
+```text
+run-local.bat
+```
+
+If Windows asks whether to allow the script, choose the option to run it anyway. The script opens a
+terminal, installs dependencies, builds the app, and starts the local server.
+
+### macOS
+
+Double-click:
+
+```text
+run-local.command
+```
+
+If macOS blocks the file, Control-click `run-local.command`, choose `Open`, then confirm. If macOS
+says the file is not executable, open Terminal in the project folder and run:
+
+```bash
+chmod +x run-local.command
+./run-local.command
+```
+
+### Terminal Fallback
+
+From the project folder, you can always run:
 
 ```bash
 npm run local
@@ -36,6 +65,29 @@ http://127.0.0.1:8787
 ```
 
 `npm run local` installs dependencies, builds the frontend, and starts the local Node server.
+
+If Node.js is missing, install the LTS version from:
+
+```text
+https://nodejs.org/
+```
+
+Then close and reopen your terminal, Claude Code, or script window before trying again.
+
+If port `8787` is already in use, close the old app window or run on another port:
+
+Windows PowerShell:
+
+```powershell
+$env:PORT=8788
+.\run-local.ps1
+```
+
+macOS Terminal:
+
+```bash
+PORT=8788 ./run-local.command
+```
 
 On first run, choose one of:
 
@@ -64,8 +116,6 @@ marks the local data as user-owned.
 After setup, use `Edit Positions` and the `Reset local files` actions to back up your current files
 and either start blank or reload the demo portfolio. Reset actions require typed confirmation before
 anything is replaced.
-
-On Windows, `run-local.ps1` runs the same one-command local startup.
 
 ## What The Dashboard Shows
 
