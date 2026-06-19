@@ -72,6 +72,8 @@ type Portfolio = {
     netInvestedPercent: number
     diversificationSectors: number
     underlyingCount: number
+    topFiveConcentration: number
+    topHoldingWeight: number
     ytdReturnPercent: number
   }
   prices: Record<string, { price: number; source: string; fetchedAt: number }>
@@ -274,6 +276,63 @@ function SectorAllocation({ sectors }: { sectors: Sector[] }) {
             <b>{formatWeight(sector.weight)}</b>
           </div>
         ))}
+      </div>
+    </section>
+  )
+}
+
+function concentrationMessage(topFiveConcentration: number, topHoldingWeight: number) {
+  if (topHoldingWeight >= 35) {
+    return 'Largest holding is doing most of the work. Review single-name exposure before adding more.'
+  }
+  if (topFiveConcentration >= 70) {
+    return 'Top holdings drive most portfolio movement. Useful if intentional; worth monitoring closely.'
+  }
+  if (topFiveConcentration >= 50) {
+    return 'Moderate concentration. The top holdings matter, but risk is not isolated to one line.'
+  }
+  return 'Broadly distributed across current holdings.'
+}
+
+function ConcentrationRisk({
+  holdings,
+  topFiveConcentration,
+  topHoldingWeight,
+}: {
+  holdings: Holding[]
+  topFiveConcentration: number
+  topHoldingWeight: number
+}) {
+  const topHoldings = holdings.slice(0, 5)
+
+  return (
+    <section className="report-section concentration-section">
+      <div className="section-heading">
+        <h2>Concentration Check</h2>
+        <span />
+      </div>
+      <div className="concentration-grid">
+        <div className="concentration-summary">
+          <span>Top 5 Weight</span>
+          <strong>{formatWeight(topFiveConcentration)}</strong>
+          <p>{concentrationMessage(topFiveConcentration, topHoldingWeight)}</p>
+        </div>
+        <div className="top-holdings-list" aria-label="Top five holdings by portfolio weight">
+          {topHoldings.length ? (
+            topHoldings.map((holding, index) => (
+              <div className="top-holding-row" key={holding.ticker}>
+                <span>{index + 1}</span>
+                <b>{holding.ticker}</b>
+                <div className="top-holding-bar">
+                  <i style={{ width: `${Math.max(2, Math.min(100, holding.weight))}%` }} />
+                </div>
+                <strong>{formatWeight(holding.weight)}</strong>
+              </div>
+            ))
+          ) : (
+            <div className="empty-mini">Add positions to see concentration.</div>
+          )}
+        </div>
       </div>
     </section>
   )
@@ -885,6 +944,11 @@ function App() {
         </section>
 
         <SectorAllocation sectors={portfolio.sectors} />
+        <ConcentrationRisk
+          holdings={portfolio.holdings}
+          topFiveConcentration={metrics.topFiveConcentration}
+          topHoldingWeight={metrics.topHoldingWeight}
+        />
         {!hasHoldings ? <EmptyPortfolioState onEdit={() => setEditorOpen(true)} /> : null}
         <HoldingsDetail
           sectors={portfolio.sectors}

@@ -49,6 +49,8 @@ describe('consolidatePositions', () => {
     assert.equal(result.metrics.cashValue, 4_000)
     assert.equal(result.metrics.cashWeight, 40)
     assert.equal(result.metrics.netInvestedPercent, 60)
+    assert.equal(result.metrics.topFiveConcentration, 60)
+    assert.equal(result.metrics.topHoldingWeight, 60)
     assert.equal(result.metrics.ytdReturnPercent, 25)
 
     assert.equal(byTicker(result, 'ABC').weight, 60)
@@ -69,6 +71,7 @@ describe('consolidatePositions', () => {
 
     assert.equal(result.metrics.investedValue, 200)
     assert.equal(result.metrics.cashValue, 800)
+    assert.equal(result.metrics.topFiveConcentration, 20)
     assert.equal(byTicker(result, 'ABC').value, 200)
     assert.equal(byTicker(result, 'ABC').price, 20)
     assert.equal(byTicker(result, 'ABC').priceSource, 'test')
@@ -157,6 +160,28 @@ describe('consolidatePositions', () => {
     assert.equal(result.metrics.baselineInvested, 300)
     assert.equal(result.metrics.cashValue, 0)
     assert.equal(result.metrics.underlyingCount, 2)
+  })
+
+  it('calculates top five concentration from sorted holding weights', () => {
+    const result = consolidatePositions(
+      [
+        position({ ticker: 'AAA', underlying: 'AAA', marketValue: '3000' }),
+        position({ ticker: 'BBB', underlying: 'BBB', marketValue: '2500', sector: 'Industrials' }),
+        position({ ticker: 'CCC', underlying: 'CCC', marketValue: '1500', sector: 'Energy' }),
+        position({ ticker: 'DDD', underlying: 'DDD', marketValue: '1000', sector: 'Health Care' }),
+        position({ ticker: 'EEE', underlying: 'EEE', marketValue: '750', sector: 'Financials' }),
+        position({ ticker: 'FFF', underlying: 'FFF', marketValue: '500', sector: 'Consumer' }),
+      ],
+      {},
+      settings({ accountTotal: 10_000, baselineInvested: 10_000 }),
+    )
+
+    assert.deepEqual(
+      result.holdings.slice(0, 5).map((holding) => holding.ticker),
+      ['AAA', 'BBB', 'CCC', 'DDD', 'EEE'],
+    )
+    assert.equal(result.metrics.topFiveConcentration, 87.5)
+    assert.equal(result.metrics.topHoldingWeight, 30)
   })
 })
 
