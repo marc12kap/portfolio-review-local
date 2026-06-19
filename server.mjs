@@ -86,6 +86,7 @@ function yearStartIso() {
 function defaultSettings() {
   return {
     accountName: 'Personal Portfolio Book',
+    benchmarkName: 'S&P 500',
     asOfDate: todayIso(),
     periodStart: yearStartIso(),
     periodEnd: todayIso(),
@@ -469,6 +470,7 @@ async function readSettings() {
   const settings = JSON.parse(raw)
   return {
     accountName: settings.accountName || 'Personal Portfolio Book',
+    benchmarkName: settings.benchmarkName || 'S&P 500',
     asOfDate: formatIsoDate(settings.asOfDate),
     periodStart: formatIsoDate(settings.periodStart),
     periodEnd: formatIsoDate(settings.periodEnd),
@@ -822,6 +824,7 @@ async function saveSettings(payload) {
   await backupLocalDataFile('settings.json')
   const next = {
     accountName: payload.accountName || 'Personal Portfolio Book',
+    benchmarkName: payload.benchmarkName || 'S&P 500',
     asOfDate: formatIsoDate(payload.asOfDate),
     periodStart: formatIsoDate(payload.periodStart),
     periodEnd: formatIsoDate(payload.periodEnd),
@@ -849,6 +852,7 @@ async function savePortfolio(payload) {
   await backupLocalDataFile('positions.csv')
   const nextSettings = {
     accountName: settings.accountName || 'Personal Portfolio Book',
+    benchmarkName: settings.benchmarkName || 'S&P 500',
     asOfDate: formatIsoDate(settings.asOfDate),
     periodStart: formatIsoDate(settings.periodStart),
     periodEnd: formatIsoDate(settings.periodEnd),
