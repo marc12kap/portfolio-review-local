@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -12,6 +12,7 @@ import {
   migrateLocalDataFiles,
   normalizePerformanceForReport,
   normalizeReportingDates,
+  previewPortfolioImport,
   validatePositions,
   validateSettings,
 } from '../server.mjs'
@@ -522,6 +523,62 @@ describe('logo sourcing', () => {
   it('allows private or low-confidence rows to use clean initials fallback', () => {
     assert.deepEqual(logoCandidatesForPosition({ logoUrl: 'initials' }), [])
     assert.deepEqual(logoCandidatesForPosition({ logoUrl: 'none' }), [])
+  })
+})
+
+describe('import preview', () => {
+  it('summarizes valid proposed files without writing local data', async () => {
+    const dir = await tempDataDir()
+    await writeFile(join(dir, 'sentinel.txt'), 'keep')
+    const before = await readdir(dir)
+
+    const result = previewPortfolioImport({
+      positionsCsv: [
+        'ticker,company,underlying,assetType,side,quantity,averageCost,marketValue,sector,optionType,strikePrice,expiryDate',
+        'AAPL,Apple Inc.,AAPL,stock,long,10,180,,Mega-Cap Technology,,,',
+        'AAPL 260619C00240000,Apple Covered Call,AAPL,option,short,1,15,-4500,Mega-Cap Technology,call,240,2026-06-19',
+      ].join('\n'),
+      settings: {
+        accountName: 'Preview Portfolio',
+        cashBalance: 5000,
+        baselineInvested: 100000,
+        benchmarkTicker: 'VOO',
+      },
+      performanceCsv: 'date,returnPct,benchmarkReturnPct\n2026-01-01,0,0\n2026-03-31,2.5,1.9\n',
+    })
+    const after = await readdir(dir)
+
+    assert.equal(result.ok, true)
+    assert.deepEqual(after, before)
+    assert.deepEqual(result.positions.assetTypeCounts, { stock: 1, option: 1 })
+    assert.equal(result.positions.priceReviewRows.length, 1)
+    assert.equal(result.positions.optionDetailGaps.length, 0)
+    assert.equal(result.settings.benchmarkTicker, 'VOO')
+    assert.equal(result.performance.rowCount, 2)
+    assert.equal(result.performance.hasBenchmarkReturns, true)
+  })
+
+  it('returns row-level validation errors and review metadata for bad proposed rows', () => {
+    const result = previewPortfolioImport({
+      positionsCsv: 'ticker,company,assetType,side,quantity,marketValue,sector\n,Missing Ticker,crypto,borrowed,ten,,',
+      settingsJson: '{bad json',
+      performanceCsv: 'date,returnPct\nnot-a-date,many\n',
+    })
+
+    assert.equal(result.ok, false)
+    assert.deepEqual(result.validationErrors, [
+      'Row 1: ticker is required.',
+      'Row 1: underlying ticker is required.',
+      'Row 1: asset type must be stock, option, spread, or cash.',
+      'Row 1: side must be long or short.',
+      'Row 1: quantity must be numeric when filled.',
+      'Row 1: enter quantity or fallback market value.',
+      'settings must be valid JSON.',
+      'Performance row 1: date must be a YYYY-MM-DD date.',
+      'Performance row 1: returnPct must be numeric when filled.',
+    ])
+    assert.equal(result.positions.missingSectorRows.length, 1)
+    assert.equal(result.positions.missingValueRows.length, 1)
   })
 })
 

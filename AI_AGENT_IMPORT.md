@@ -35,6 +35,16 @@ Before writing anything:
 3. Show me the proposed positions table.
 4. Ask me to confirm.
 
+You can use the local dry-run endpoint before saving:
+
+```text
+POST /api/import/preview
+```
+
+Send JSON with `positionsCsv`, optional `settings` or `settingsJson`, and optional
+`performanceCsv`. Use the response to review validation errors, missing sectors, missing values,
+option-detail gaps, price-review rows, and assumptions.
+
 After I confirm:
 
 1. Create backups of existing local data files if they exist.

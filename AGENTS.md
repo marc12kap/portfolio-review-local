@@ -92,6 +92,10 @@ For logos, prefer explicit trusted `logoUrl` values. Use `initials`, `none`, or 
 private, ambiguous, stale, or low-confidence holdings so the app shows a clean initials fallback
 instead of a polished but wrong logo.
 
+Use `POST /api/import/preview` to validate proposed AI-assisted imports before writing local files.
+The endpoint is a dry run and should not create backups, mutate `data/`, or require existing local
+portfolio files.
+
 Keep `data/source.json` aligned with the active data state: demo setup/reset should mark `demo`;
 blank setup, import setup, and user saves should mark `user`.
 

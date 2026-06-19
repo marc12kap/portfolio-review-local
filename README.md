@@ -189,6 +189,16 @@ calculates current book value from live/fallback holdings value plus that cash b
 For faster setup, ask an AI agent to follow [AI_AGENT_IMPORT.md](AI_AGENT_IMPORT.md). The agent
 should draft and preview normalized local files first, then write them only after you confirm.
 
+Agents and future UI flows can preview proposed imports without writing local files:
+
+```text
+POST /api/import/preview
+```
+
+The JSON body accepts `positionsCsv` plus optional `settings`, `settingsJson`, and `performanceCsv`.
+The response includes validation errors, asset-type counts, missing sectors/values, option-detail
+gaps, price-review rows, assumptions, and benchmark/date/cash settings.
+
 `data/settings.json` includes `cashBalance` for available cash. Older local files that only include
 `accountTotal` still work; the app derives cash from legacy book value minus invested value until the
 settings are saved again.

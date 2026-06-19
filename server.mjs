@@ -720,6 +720,221 @@ function validatePositions(positions) {
   if (errors.length) throw validationError('Positions validation failed.', errors)
 }
 
+function validationErrorsFrom(action) {
+  try {
+    action()
+    return []
+  } catch (error) {
+    if (Array.isArray(error?.validationErrors)) return error.validationErrors
+    throw error
+  }
+}
+
+function parseOptionalJsonInput(value, label) {
+  if (value === null || value === undefined || value === '') return {}
+  if (typeof value === 'string') {
+    try {
+      return JSON.parse(value)
+    } catch {
+      throw validationError('Import preview validation failed.', [`${label} must be valid JSON.`])
+    }
+  }
+  if (typeof value === 'object' && !Array.isArray(value)) return value
+  throw validationError('Import preview validation failed.', [`${label} must be a JSON object.`])
+}
+
+function previewSettings(input) {
+  const settings = parseOptionalJsonInput(input, 'settings')
+  return {
+    ...normalizeReportingDates(settings),
+    accountName: settings.accountName || 'Personal Portfolio Book',
+    benchmarkName: settings.benchmarkName || 'S&P 500',
+    benchmarkTicker: cleanBenchmarkTicker(settings.benchmarkTicker),
+    accountTotal: toNumber(settings.accountTotal),
+    cashBalance: hasNumericValue(settings.cashBalance) ? toNumber(settings.cashBalance) : 0,
+    baselineInvested: toNumber(settings.baselineInvested),
+  }
+}
+
+function parsePerformancePreview(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return []
+
+  const rows = parseCsv(raw).map((row) => ({
+    date: formatIsoDate(row.date),
+    returnPct: row.returnPct ?? '',
+    benchmarkReturnPct: row.benchmarkReturnPct ?? '',
+  }))
+  const errors = []
+
+  rows.forEach((row, index) => {
+    const rowNumber = index + 1
+    if (!row.date) errors.push(`Performance row ${rowNumber}: date is required.`)
+    if (!isValidIsoDate(row.date)) {
+      errors.push(`Performance row ${rowNumber}: date must be a YYYY-MM-DD date.`)
+    }
+    if (row.returnPct !== '' && !hasNumericValue(row.returnPct)) {
+      errors.push(`Performance row ${rowNumber}: returnPct must be numeric when filled.`)
+    }
+    if (row.benchmarkReturnPct !== '' && !hasNumericValue(row.benchmarkReturnPct)) {
+      errors.push(`Performance row ${rowNumber}: benchmarkReturnPct must be numeric when filled.`)
+    }
+  })
+
+  if (errors.length) throw validationError('Performance validation failed.', errors)
+  return rows.map((row) => ({
+    date: row.date,
+    returnPct: toNumber(row.returnPct),
+    benchmarkReturnPct: hasNumericValue(row.benchmarkReturnPct) ? toNumber(row.benchmarkReturnPct) : null,
+  }))
+}
+
+function summarizeImportPositions(positions) {
+  const assetTypeCounts = {}
+  const missingSectorRows = []
+  const missingValueRows = []
+  const priceReviewRows = []
+  const optionDetailGaps = []
+  const tickerReviewRows = []
+
+  positions.forEach((position, index) => {
+    const rowNumber = index + 1
+    const ticker = cleanTicker(position.ticker)
+    const underlying = cleanTicker(position.underlying || position.ticker)
+    const assetType = String(position.assetType || 'stock')
+    const quantity = hasNumericValue(position.quantity)
+    const marketValue = hasNumericValue(position.marketValue)
+
+    assetTypeCounts[assetType] = (assetTypeCounts[assetType] || 0) + 1
+
+    if (!String(position.sector || '').trim()) {
+      missingSectorRows.push({ rowNumber, ticker, company: position.company || ticker })
+    }
+    if (!quantity && !marketValue) {
+      missingValueRows.push({ rowNumber, ticker, company: position.company || ticker })
+    }
+    if (quantity && !marketValue) {
+      priceReviewRows.push({
+        rowNumber,
+        ticker,
+        underlying,
+        company: position.company || ticker,
+        message: 'Relies on live or cached pricing unless you add a fallback marketValue.',
+      })
+    }
+
+    if (['option', 'spread'].includes(assetType) || position.optionType) {
+      const missing = []
+      if (!underlying) missing.push('underlying')
+      if (!position.optionType) missing.push('optionType')
+      if (!hasNumericValue(position.strikePrice)) missing.push('strikePrice')
+      if (!position.expiryDate) missing.push('expiryDate')
+      if (missing.length) optionDetailGaps.push({ rowNumber, ticker, missing })
+    }
+
+    if (!/^[A-Z0-9.-]{1,12}$/.test(underlying)) {
+      tickerReviewRows.push({
+        rowNumber,
+        ticker,
+        underlying,
+        message: 'Underlying ticker may not price through public quote endpoints.',
+      })
+    }
+    if (logoLookupDisabled(position)) {
+      tickerReviewRows.push({
+        rowNumber,
+        ticker,
+        underlying,
+        message: 'Logo lookup is intentionally disabled for this row.',
+      })
+    }
+  })
+
+  return {
+    rowCount: positions.length,
+    assetTypeCounts,
+    missingSectorRows,
+    missingValueRows,
+    priceReviewRows,
+    optionDetailGaps,
+    tickerReviewRows,
+  }
+}
+
+function summarizeImportPerformance(rows) {
+  const dates = rows.map((row) => row.date).filter(Boolean).sort()
+  return {
+    rowCount: rows.length,
+    hasBenchmarkReturns: rows.some((row) => row.benchmarkReturnPct !== null),
+    startDate: dates[0] || '',
+    endDate: dates.at(-1) || '',
+  }
+}
+
+function previewPortfolioImport(payload = {}) {
+  const validationErrors = []
+  const assumptions = []
+  let positions = []
+  let rawSettings = {}
+  let settings = previewSettings({})
+  let performance = []
+  const positionsCsv = String(payload.positionsCsv || '')
+
+  try {
+    if (!positionsCsv.trim()) validationErrors.push('positionsCsv is required.')
+    positions = parseCsv(positionsCsv)
+  } catch {
+    validationErrors.push('positionsCsv must be valid CSV.')
+  }
+
+  validationErrors.push(...validationErrorsFrom(() => validatePositions(positions)))
+
+  try {
+    rawSettings = parseOptionalJsonInput(payload.settings ?? payload.settingsJson, 'settings')
+    settings = previewSettings(rawSettings)
+    validationErrors.push(...validationErrorsFrom(() => validateSettings(settings)))
+  } catch (error) {
+    if (Array.isArray(error?.validationErrors)) validationErrors.push(...error.validationErrors)
+    else throw error
+  }
+
+  try {
+    performance = parsePerformancePreview(payload.performanceCsv)
+  } catch (error) {
+    if (Array.isArray(error?.validationErrors)) validationErrors.push(...error.validationErrors)
+    else throw error
+  }
+
+  if (!hasNumericValue(rawSettings.cashBalance)) {
+    assumptions.push('Available cash defaults to $0 unless provided.')
+  }
+  if (!hasNumericValue(rawSettings.baselineInvested)) {
+    assumptions.push('Beginning book value defaults to $0 unless provided.')
+  }
+  assumptions.push(`Report dates use today's Eastern Time date: ${settings.asOfDate}.`)
+  if (!performance.length) {
+    assumptions.push('No performance history was provided; the app can use its default YTD baseline.')
+  }
+
+  return {
+    ok: validationErrors.length === 0,
+    validationErrors,
+    positions: summarizeImportPositions(positions),
+    settings: {
+      accountName: settings.accountName,
+      benchmarkName: settings.benchmarkName,
+      benchmarkTicker: settings.benchmarkTicker,
+      asOfDate: settings.asOfDate,
+      periodStart: settings.periodStart,
+      periodEnd: settings.periodEnd,
+      cashBalance: settings.cashBalance,
+      baselineInvested: settings.baselineInvested,
+    },
+    performance: summarizeImportPerformance(performance),
+    assumptions,
+  }
+}
+
 function logoContentTypeForExtension(extension) {
   return mimeTypes[extension] || 'application/octet-stream'
 }
@@ -1361,6 +1576,12 @@ const server = createServer(async (request, response) => {
       return
     }
 
+    if (url.pathname === '/api/import/preview' && request.method === 'POST') {
+      const body = await readBody(request)
+      sendJson(response, 200, previewPortfolioImport(body))
+      return
+    }
+
     if (url.pathname === '/api/setup' && request.method === 'POST') {
       const body = await readBody(request)
       await initializePortfolioData(body)
@@ -1457,6 +1678,7 @@ export {
   migrateLocalDataFiles,
   normalizePerformanceForReport,
   normalizeReportingDates,
+  previewPortfolioImport,
   validatePositions,
   validateSettings,
 }
