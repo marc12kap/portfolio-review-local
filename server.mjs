@@ -97,6 +97,7 @@ function defaultSettings() {
     periodStart: yearStartIso(),
     periodEnd: todayIso(),
     accountTotal: 0,
+    cashBalance: 0,
     baselineInvested: 0,
   }
 }
@@ -286,6 +287,10 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
+function roundCurrency(value) {
+  return Math.round((value + Number.EPSILON) * 100) / 100
+}
+
 function hasNumericValue(value) {
   if (value === null || value === undefined || value === '') return false
   return Number.isFinite(Number(String(value).replace(/[$,%\s]/g, '')))
@@ -341,11 +346,14 @@ function validateSettings(payload) {
   const errors = []
   const numericFields = [
     ['accountTotal', 'Current book value'],
+    ['cashBalance', 'Available cash'],
     ['baselineInvested', 'Beginning book value'],
   ]
 
   for (const [field, label] of numericFields) {
-    if (!hasNumericValue(payload?.[field])) errors.push(`${label} must be a number.`)
+    if (payload?.[field] !== undefined && !hasNumericValue(payload?.[field])) {
+      errors.push(`${label} must be a number.`)
+    }
   }
 
   for (const [field, label] of [
@@ -514,6 +522,7 @@ async function readSettings() {
     periodStart: formatIsoDate(settings.periodStart),
     periodEnd: formatIsoDate(settings.periodEnd),
     accountTotal: toNumber(settings.accountTotal),
+    cashBalance: hasNumericValue(settings.cashBalance) ? toNumber(settings.cashBalance) : null,
     baselineInvested: toNumber(settings.baselineInvested),
   }
 }
@@ -754,8 +763,14 @@ function consolidatePositions(positions, prices, settings) {
 
   const rawHoldings = [...grouped.values()].filter((holding) => Math.abs(holding.value) > 0.01)
   const investedValue = rawHoldings.reduce((sum, holding) => sum + holding.value, 0)
-  const accountTotal = settings.accountTotal > 0 ? settings.accountTotal : investedValue
-  const cashValue = Math.max(accountTotal - investedValue, 0)
+  const hasCashBalance = hasNumericValue(settings.cashBalance)
+  const legacyAccountTotal = settings.accountTotal > 0 ? settings.accountTotal : investedValue
+  const cashValue = roundCurrency(
+    hasCashBalance
+      ? Math.max(toNumber(settings.cashBalance), 0)
+      : Math.max(legacyAccountTotal - investedValue, 0),
+  )
+  const accountTotal = roundCurrency(hasCashBalance ? investedValue + cashValue : legacyAccountTotal)
   const baselineInvested = settings.baselineInvested > 0 ? settings.baselineInvested : accountTotal
   const ytdReturnPercent = baselineInvested
     ? ((accountTotal - baselineInvested) / baselineInvested) * 100
@@ -846,6 +861,8 @@ async function buildPortfolio() {
   return {
     settings: {
       ...settings,
+      accountTotal: consolidated.metrics.accountTotal,
+      cashBalance: consolidated.metrics.cashValue,
       asOfLabel: prettyDate(settings.asOfDate),
       periodStartLabel: prettyDate(settings.periodStart),
       periodEndLabel: prettyDate(settings.periodEnd || settings.asOfDate),
@@ -869,6 +886,7 @@ async function saveSettings(payload) {
     periodStart: formatIsoDate(payload.periodStart),
     periodEnd: formatIsoDate(payload.periodEnd),
     accountTotal: toNumber(payload.accountTotal),
+    cashBalance: hasNumericValue(payload.cashBalance) ? toNumber(payload.cashBalance) : null,
     baselineInvested: toNumber(payload.baselineInvested),
   }
   await writeFile(join(dataDir, 'settings.json'), `${JSON.stringify(next, null, 2)}\n`)
@@ -898,6 +916,7 @@ async function savePortfolio(payload) {
     periodStart: formatIsoDate(settings.periodStart),
     periodEnd: formatIsoDate(settings.periodEnd),
     accountTotal: toNumber(settings.accountTotal),
+    cashBalance: hasNumericValue(settings.cashBalance) ? toNumber(settings.cashBalance) : null,
     baselineInvested: toNumber(settings.baselineInvested),
   }
   await Promise.all([

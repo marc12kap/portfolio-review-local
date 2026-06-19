@@ -12,6 +12,7 @@ type Settings = {
   periodEnd: string
   periodEndLabel: string
   accountTotal: number
+  cashBalance: number
   baselineInvested: number
 }
 
@@ -717,12 +718,12 @@ function Editor({
             />
           </label>
           <label>
-            Current book value
+            Available cash
             <input
               type="number"
-              value={settings.accountTotal}
+              value={settings.cashBalance}
               onChange={(event) =>
-                setSettings({ ...settings, accountTotal: Number(event.target.value) })
+                setSettings({ ...settings, cashBalance: Number(event.target.value) })
               }
             />
           </label>
