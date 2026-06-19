@@ -151,6 +151,8 @@ Prices:
 - Successful prices are cached in memory for about 10 minutes.
 - Holdings with quantity use live prices when available.
 - Rows without usable live prices fall back to `marketValue`.
+- Rows with quantity but no live price and no `marketValue` appear in a review panel so you can fix
+  the ticker, add a fallback value, or retry live prices later.
 
 Logos:
 

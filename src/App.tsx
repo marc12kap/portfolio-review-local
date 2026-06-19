@@ -72,12 +72,23 @@ type PerformancePoint = {
   benchmarkReturnPct: number | null
 }
 
+type PriceIssue = {
+  rowNumber: number
+  ticker: string
+  underlying: string
+  company: string
+  quantity: number
+  assetType: string
+  message: string
+}
+
 type Portfolio = {
   setupRequired?: false
   settings: Settings
   positions: Position[]
   performance: PerformancePoint[]
   holdings: Holding[]
+  priceIssues: PriceIssue[]
   optionExposures: OptionExposure[]
   sectors: Sector[]
   metrics: {
@@ -590,6 +601,42 @@ function HoldingsDetail({
           <strong>100.0%</strong>
         </div>
       </div>
+    </section>
+  )
+}
+
+function PriceIssuePanel({
+  issues,
+  onEdit,
+}: {
+  issues: PriceIssue[]
+  onEdit: () => void
+}) {
+  if (!issues.length) return null
+
+  return (
+    <section className="report-section price-issue-section">
+      <div className="section-heading">
+        <h2>Price Inputs Need Review</h2>
+        <span />
+      </div>
+      <p>
+        These rows have quantity but no live price or fallback market value. Fix the ticker, add a
+        fallback market value, or refresh prices later.
+      </p>
+      <div className="price-issue-list" aria-label="Rows with missing price inputs">
+        {issues.map((issue) => (
+          <div className="price-issue-row" key={`${issue.rowNumber}-${issue.ticker}`}>
+            <b>{issue.ticker}</b>
+            <span>Row {issue.rowNumber}</span>
+            <span>{issue.company}</span>
+            <strong>{issue.quantity} {issue.assetType === 'stock' ? 'shares' : 'contracts'}</strong>
+          </div>
+        ))}
+      </div>
+      <button type="button" onClick={onEdit}>
+        Edit Rows
+      </button>
     </section>
   )
 }
@@ -1233,6 +1280,10 @@ function App() {
         />
         <OptionsExposureSummary exposures={portfolio.optionExposures} />
         {!hasHoldings ? <EmptyPortfolioState onEdit={() => setEditorOpen(true)} /> : null}
+        <PriceIssuePanel
+          issues={portfolio.priceIssues}
+          onEdit={() => setEditorOpen(true)}
+        />
         <HoldingsDetail
           sectors={portfolio.sectors}
           holdings={portfolio.holdings}
