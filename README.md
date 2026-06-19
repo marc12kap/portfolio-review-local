@@ -181,6 +181,18 @@ http://127.0.0.1:8787/api/health
 The health check reports server, data-file, schema, backup, source, and price-cache status using
 counts and file presence only. It does not return holdings, tickers, cash values, or position rows.
 
+## Year-Start Review
+
+If the saved reporting period starts in a prior calendar year, the dashboard shows a compact
+year-start review notice. The app does not change local files automatically. Review holdings, cash,
+and current book value first, then use the notice's reset action only when the current book is ready
+to become the new YTD baseline.
+
+The reset action creates backups of `data/settings.json` and `data/performance.csv`, sets the
+period start to January 1 of the current year, sets beginning book value to the current calculated
+book value, and writes a fresh two-row performance baseline. You can dismiss the notice for the
+current year without changing files.
+
 ## Privacy Model
 
 - There is no account system, hosted backend, or cloud database.

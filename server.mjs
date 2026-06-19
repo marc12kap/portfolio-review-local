@@ -143,6 +143,20 @@ function yearStartIso(today = todayIso()) {
   return `${today.slice(0, 4)}-01-01`
 }
 
+function yearStartReviewForSettings(settings, today = todayIso()) {
+  const currentYear = today.slice(0, 4)
+  const currentYearStart = `${currentYear}-01-01`
+  const periodStart = formatIsoDate(settings?.periodStart)
+  const periodStartYear = periodStart ? periodStart.slice(0, 4) : null
+  return {
+    required: Boolean(periodStartYear && periodStartYear !== currentYear),
+    currentYear,
+    currentYearStart,
+    periodStart: periodStart || null,
+    periodStartYear,
+  }
+}
+
 function normalizeReportingDates(settings, today = todayIso()) {
   const todayValue = formatIsoDate(today)
   const yearStart = `${todayValue.slice(0, 4)}-01-01`
@@ -1396,43 +1410,11 @@ async function fetchLogo(position) {
 }
 
 async function readSettings() {
-  const raw = await readFile(join(dataDir, 'settings.json'), 'utf8')
-  const settings = JSON.parse(raw)
-  const reportingDates = normalizeReportingDates(settings)
-  return {
-    accountName: settings.accountName || 'Personal Portfolio Book',
-    benchmarkName: settings.benchmarkName || 'S&P 500',
-    benchmarkTicker: cleanBenchmarkTicker(settings.benchmarkTicker),
-    asOfDate: reportingDates.asOfDate,
-    periodStart: reportingDates.periodStart,
-    periodEnd: reportingDates.periodEnd,
-    accountTotal: toNumber(settings.accountTotal),
-    cashBalance: hasNumericValue(settings.cashBalance) ? toNumber(settings.cashBalance) : null,
-    baselineInvested: toNumber(settings.baselineInvested),
-  }
+  return readSettingsFrom(dataDir)
 }
 
 async function readPositions() {
-  const raw = await readFile(join(dataDir, 'positions.csv'), 'utf8')
-  return parseCsv(raw).map((row, index) => ({
-    id: row.id || String(index + 1),
-    ticker: cleanTicker(row.ticker),
-    company: row.company || cleanTicker(row.ticker),
-    underlying: cleanTicker(row.underlying || row.ticker),
-    assetType: row.assetType || 'stock',
-    side: row.side === 'short' ? 'short' : 'long',
-    quantity: row.quantity || '',
-    averageCost: row.averageCost || '',
-    multiplier: row.multiplier || '',
-    marketValue: row.marketValue || '',
-    optionType: row.optionType || '',
-    strikePrice: row.strikePrice || '',
-    expiryDate: row.expiryDate || '',
-    premium: row.premium || '',
-    sector: row.sector || 'Other',
-    structure: row.structure || '',
-    logoUrl: row.logoUrl || '',
-  }))
+  return readPositionsFrom(dataDir)
 }
 
 async function readPerformance(settings) {
@@ -1812,8 +1794,92 @@ async function buildPortfolio() {
     prices,
     source,
     schema,
+    yearStartReview: yearStartReviewForSettings(settings),
     ...consolidated,
   }
+}
+
+function normalizeSettingsForRead(settings) {
+  const reportingDates = normalizeReportingDates(settings)
+  return {
+    accountName: settings.accountName || 'Personal Portfolio Book',
+    benchmarkName: settings.benchmarkName || 'S&P 500',
+    benchmarkTicker: cleanBenchmarkTicker(settings.benchmarkTicker),
+    asOfDate: reportingDates.asOfDate,
+    periodStart: reportingDates.periodStart,
+    periodEnd: reportingDates.periodEnd,
+    accountTotal: toNumber(settings.accountTotal),
+    cashBalance: hasNumericValue(settings.cashBalance) ? toNumber(settings.cashBalance) : null,
+    baselineInvested: toNumber(settings.baselineInvested),
+  }
+}
+
+function normalizePositionForRead(row, index) {
+  return {
+    id: row.id || String(index + 1),
+    ticker: cleanTicker(row.ticker),
+    company: row.company || cleanTicker(row.ticker),
+    underlying: cleanTicker(row.underlying || row.ticker),
+    assetType: row.assetType || 'stock',
+    side: row.side === 'short' ? 'short' : 'long',
+    quantity: row.quantity || '',
+    averageCost: row.averageCost || '',
+    multiplier: row.multiplier || '',
+    marketValue: row.marketValue || '',
+    optionType: row.optionType || '',
+    strikePrice: row.strikePrice || '',
+    expiryDate: row.expiryDate || '',
+    premium: row.premium || '',
+    sector: row.sector || 'Other',
+    structure: row.structure || '',
+    logoUrl: row.logoUrl || '',
+  }
+}
+
+async function readSettingsFrom(baseDir = dataDir) {
+  const raw = await readFile(join(baseDir, 'settings.json'), 'utf8')
+  return normalizeSettingsForRead(JSON.parse(raw))
+}
+
+async function readPositionsFrom(baseDir = dataDir) {
+  const raw = await readFile(join(baseDir, 'positions.csv'), 'utf8')
+  return parseCsv(raw).map(normalizePositionForRead)
+}
+
+async function resetYearStartBaseline(baseDir = dataDir, priceLookup = fetchPrices) {
+  await mkdir(baseDir, { recursive: true })
+  await migrateLocalDataFiles(baseDir)
+  const [settings, positions] = await Promise.all([readSettingsFrom(baseDir), readPositionsFrom(baseDir)])
+  const tickers = positions.map((position) => position.underlying || position.ticker)
+  const prices = await priceLookup(tickers)
+  const consolidated = consolidatePositions(positions, prices, settings)
+  const today = todayIso()
+  const periodStart = yearStartIso(today)
+  const nextSettings = {
+    accountName: settings.accountName || 'Personal Portfolio Book',
+    benchmarkName: settings.benchmarkName || 'S&P 500',
+    benchmarkTicker: cleanBenchmarkTicker(settings.benchmarkTicker),
+    asOfDate: today,
+    periodStart,
+    periodEnd: today,
+    accountTotal: consolidated.metrics.accountTotal,
+    cashBalance: hasNumericValue(settings.cashBalance) ? toNumber(settings.cashBalance) : null,
+    baselineInvested: consolidated.metrics.accountTotal,
+  }
+
+  validateSettings(nextSettings)
+  await Promise.all([
+    backupLocalDataFileIn(baseDir, 'settings.json'),
+    backupLocalDataFileIn(baseDir, 'performance.csv'),
+  ])
+  await Promise.all([
+    writeFile(join(baseDir, 'settings.json'), `${JSON.stringify(nextSettings, null, 2)}\n`),
+    writeFile(
+      join(baseDir, 'performance.csv'),
+      `date,returnPct,benchmarkReturnPct\n${periodStart},0,\n${today},0,\n`,
+    ),
+    writeFile(join(baseDir, 'source.json'), `${JSON.stringify({ source: 'user', updatedAt: new Date().toISOString() }, null, 2)}\n`),
+  ])
 }
 
 async function saveSettings(payload) {
@@ -1956,6 +2022,12 @@ const server = createServer(async (request, response) => {
       return
     }
 
+    if (url.pathname === '/api/year-start/reset' && request.method === 'POST') {
+      await resetYearStartBaseline()
+      sendJson(response, 200, await buildPortfolio())
+      return
+    }
+
     if (url.pathname === '/api/positions' && request.method === 'PUT') {
       const body = await readBody(request)
       await savePositions(body.positions)
@@ -2041,9 +2113,11 @@ export {
   normalizePerformanceForReport,
   normalizeReportingDates,
   previewPortfolioImport,
+  resetYearStartBaseline,
   restoreLocalBackup,
   validatePositions,
   validateSettings,
+  yearStartReviewForSettings,
 }
 
 if (isMainModule) {
