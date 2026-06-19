@@ -13,7 +13,7 @@ id,ticker,company,underlying,assetType,side,quantity,averageCost,multiplier,mark
 12,JPM,JPMorgan Chase & Co.,JPM,stock,long,250,196,,55000,,,,,Financials,Large-cap bank,https://logo.clearbit.com/jpmorganchase.com
 13,COST,Costco Wholesale Corporation,COST,stock,long,55,810,,50000,,,,,Consumer Staples,Defensive compounder,https://logo.clearbit.com/costco.com
 14,XOM,Exxon Mobil Corporation,XOM,stock,long,420,108,,47000,,,,,Energy,Energy allocation,https://logo.clearbit.com/exxonmobil.com
-15,SPCX,SPAC and New Issue ETF,SPCX,stock,long,,24,,22500,,,,,Satellite & Thematic ETFs,Small thematic satellite ETF,https://logo.clearbit.com/axs.com
+15,SPCX,SpaceX,SPCX,stock,long,120,155,,22500,,,,,Space Economy,Common shares,https://logo.clearbit.com/spacex.com
 16,BRK.B,Berkshire Hathaway Inc.,BRK.B,stock,long,120,410,,52000,,,,,Diversified Holdings,Long-term compounder,https://logo.clearbit.com/berkshirehathaway.com
 17,TSLA 270115C00300000,Tesla Jan 2027 300 Call,TSLA,option,long,,60,100,12000,call,300,2027-01-15,60,Consumer Discretionary,Long call overlay,https://logo.clearbit.com/tesla.com
 18,AAPL 260619C00240000,Apple Jun 2026 240 Covered Call,AAPL,option,short,,15,100,-4500,call,240,2026-06-19,15,Mega-Cap Technology,Covered-call hedge,https://logo.clearbit.com/apple.com
