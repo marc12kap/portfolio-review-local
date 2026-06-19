@@ -557,11 +557,52 @@ a {
   font-weight: 650;
 }
 
-.holding-row strong {
+.holding-row strong,
+.weight-cell {
   color: #414854;
   font-size: 12px;
   font-weight: 900;
   text-align: right;
+}
+
+.weight-cell {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+}
+
+.price-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 16px;
+  padding: 0 6px;
+  border: 1px solid #d4d9dc;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #697484;
+  font-size: 8px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.price-status.live {
+  border-color: #b9d8ca;
+  background: #eef7f3;
+  color: #2f725f;
+}
+
+.price-status.fallback {
+  border-color: #dcc7a9;
+  background: #fbf5eb;
+  color: #8f6633;
+}
+
+.price-status.missing {
+  border-color: #dfc1c0;
+  background: #fff5f4;
+  color: #a84845;
 }
 
 .summary-row {

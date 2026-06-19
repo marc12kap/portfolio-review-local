@@ -52,6 +52,8 @@ describe('consolidatePositions', () => {
     assert.equal(result.metrics.ytdReturnPercent, 25)
 
     assert.equal(byTicker(result, 'ABC').weight, 60)
+    assert.equal(byTicker(result, 'ABC').priceStatus, 'fallback')
+    assert.equal(byTicker(result, 'ABC').priceFetchedAt, null)
     assert.deepEqual(result.sectors, [
       { name: 'Technology', weight: 60 },
       { name: 'Cash & Equivalents', weight: 40 },
@@ -70,6 +72,8 @@ describe('consolidatePositions', () => {
     assert.equal(byTicker(result, 'ABC').value, 200)
     assert.equal(byTicker(result, 'ABC').price, 20)
     assert.equal(byTicker(result, 'ABC').priceSource, 'test')
+    assert.equal(byTicker(result, 'ABC').priceFetchedAt, 1)
+    assert.equal(byTicker(result, 'ABC').priceStatus, 'live')
   })
 
   it('applies default option multipliers for long call exposure', () => {
