@@ -51,6 +51,18 @@ type Sector = {
   weight: number
 }
 
+type OptionExposure = {
+  ticker: string
+  value: number
+  weight: number
+  legCount: number
+  callCount: number
+  putCount: number
+  spreadCount: number
+  netContracts: number
+  expirations: string[]
+}
+
 type PerformancePoint = {
   date: string
   returnPct: number
@@ -62,6 +74,7 @@ type Portfolio = {
   positions: Position[]
   performance: PerformancePoint[]
   holdings: Holding[]
+  optionExposures: OptionExposure[]
   sectors: Sector[]
   metrics: {
     accountTotal: number
@@ -147,6 +160,12 @@ function formatCurrency(value: number) {
     style: 'currency',
     currency: 'USD',
     maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function formatNumber(value: number) {
+  return new Intl.NumberFormat('en-US', {
+    maximumFractionDigits: 2,
   }).format(value)
 }
 
@@ -334,6 +353,48 @@ function ConcentrationRisk({
           )}
         </div>
       </div>
+    </section>
+  )
+}
+
+function OptionsExposureSummary({ exposures }: { exposures: OptionExposure[] }) {
+  return (
+    <section className="report-section options-section">
+      <div className="section-heading">
+        <h2>Options Exposure</h2>
+        <span />
+      </div>
+      {!exposures.length ? (
+        <div className="empty-mini">No option or spread rows in the local positions file.</div>
+      ) : (
+        <div className="options-table" role="table" aria-label="Options exposure summary">
+          <div className="options-head" role="row">
+            <span>Underlying</span>
+            <span>Legs</span>
+            <span>Calls / Puts</span>
+            <span>Expirations</span>
+            <span>Net Contracts</span>
+            <span>Exposure</span>
+          </div>
+          {exposures.map((exposure) => (
+            <div className="options-row" role="row" key={exposure.ticker}>
+              <b>{exposure.ticker}</b>
+              <span title="Each option or spread row counted as one leg.">{exposure.legCount}</span>
+              <span title="Short rows subtract from net exposure but still count as legs.">
+                {exposure.callCount}C / {exposure.putCount}P
+                {exposure.spreadCount ? ` / ${exposure.spreadCount} spread` : ''}
+              </span>
+              <span>{exposure.expirations.length ? exposure.expirations.join(', ') : '-'}</span>
+              <span title="Signed contracts; short rows subtract.">
+                {formatNumber(exposure.netContracts)}
+              </span>
+              <strong title="Exposure uses the same live-price or fallback-value math as holdings.">
+                {formatWeight(exposure.weight)}
+              </strong>
+            </div>
+          ))}
+        </div>
+      )}
     </section>
   )
 }
@@ -949,6 +1010,7 @@ function App() {
           topFiveConcentration={metrics.topFiveConcentration}
           topHoldingWeight={metrics.topHoldingWeight}
         />
+        <OptionsExposureSummary exposures={portfolio.optionExposures} />
         {!hasHoldings ? <EmptyPortfolioState onEdit={() => setEditorOpen(true)} /> : null}
         <HoldingsDetail
           sectors={portfolio.sectors}

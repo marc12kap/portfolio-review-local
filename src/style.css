@@ -614,6 +614,51 @@ a {
   text-align: right;
 }
 
+.options-section {
+  padding-top: 24px;
+}
+
+.options-table {
+  margin-top: 14px;
+  border-top: 1px solid #dedbd4;
+}
+
+.options-head,
+.options-row {
+  display: grid;
+  grid-template-columns: 96px 48px 118px minmax(180px, 1fr) 112px 76px;
+  align-items: center;
+  gap: 12px;
+}
+
+.options-head {
+  min-height: 32px;
+  color: #a5adba;
+  font-size: 9px;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.options-row {
+  min-height: 42px;
+  border-top: 1px solid #e4e1db;
+  color: #697484;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.options-row b {
+  color: #3b4350;
+  font-weight: 950;
+}
+
+.options-row strong {
+  color: #414854;
+  font-weight: 950;
+  text-align: right;
+}
+
 .empty-mini {
   padding: 10px 0;
   color: #7e8795;

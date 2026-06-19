@@ -626,8 +626,13 @@ function inferStructure(rows, fallback) {
   return 'Common shares'
 }
 
+function isOptionLike(position) {
+  return ['option', 'spread'].includes(position.assetType) || ['call', 'put'].includes(position.optionType)
+}
+
 function consolidatePositions(positions, prices, settings) {
   const grouped = new Map()
+  const optionExposureMap = new Map()
 
   for (const position of positions) {
     const underlying = cleanTicker(position.underlying || position.ticker)
@@ -646,6 +651,7 @@ function consolidatePositions(positions, prices, settings) {
     const marketValue = toNumber(position.marketValue)
     const usesLivePrice = Boolean(price && hasQuantity)
     const computedValue = usesLivePrice ? sideSign * quantity * multiplier * price : marketValue
+    const optionType = ['call', 'put'].includes(position.optionType) ? position.optionType : 'option'
 
     if (!grouped.has(underlying)) {
       grouped.set(underlying, {
@@ -672,6 +678,30 @@ function consolidatePositions(positions, prices, settings) {
       item.priceStatus = 'live'
     } else if (hasFallbackMarketValue && item.priceStatus !== 'live') {
       item.priceStatus = 'fallback'
+    }
+
+    if (isOptionLike(position)) {
+      if (!optionExposureMap.has(underlying)) {
+        optionExposureMap.set(underlying, {
+          ticker: underlying,
+          value: 0,
+          legCount: 0,
+          callCount: 0,
+          putCount: 0,
+          spreadCount: 0,
+          netContracts: 0,
+          expirations: new Set(),
+        })
+      }
+
+      const exposure = optionExposureMap.get(underlying)
+      exposure.value += computedValue
+      exposure.legCount += 1
+      exposure.netContracts += sideSign * quantity
+      if (optionType === 'call') exposure.callCount += 1
+      if (optionType === 'put') exposure.putCount += 1
+      if (position.assetType === 'spread') exposure.spreadCount += 1
+      if (position.expiryDate) exposure.expirations.add(position.expiryDate)
     }
   }
 
@@ -722,6 +752,19 @@ function consolidatePositions(positions, prices, settings) {
 
   return {
     holdings,
+    optionExposures: [...optionExposureMap.values()]
+      .map((exposure) => ({
+        ticker: exposure.ticker,
+        value: exposure.value,
+        weight: accountTotal ? (exposure.value / accountTotal) * 100 : 0,
+        legCount: exposure.legCount,
+        callCount: exposure.callCount,
+        putCount: exposure.putCount,
+        spreadCount: exposure.spreadCount,
+        netContracts: exposure.netContracts,
+        expirations: [...exposure.expirations].sort(),
+      }))
+      .sort((left, right) => Math.abs(right.weight) - Math.abs(left.weight)),
     sectors,
     metrics: {
       accountTotal,
