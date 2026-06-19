@@ -85,6 +85,10 @@ type PriceIssue = {
 type Portfolio = {
   setupRequired?: false
   settings: Settings
+  source: {
+    source: 'demo' | 'user'
+    isDemo: boolean
+  }
   positions: Position[]
   performance: PerformancePoint[]
   holdings: Holding[]
@@ -809,6 +813,20 @@ function WelcomeGettingStartedModal({
   )
 }
 
+function SampleDataNotice({ onEdit }: { onEdit: () => void }) {
+  return (
+    <section className="sample-data-notice" aria-label="Sample data notice">
+      <div>
+        <strong>Sample data is active</strong>
+        <span>Tour the dashboard, then use Edit Positions to start blank before adding your own holdings.</span>
+      </div>
+      <button type="button" onClick={onEdit}>
+        Start From Your Data
+      </button>
+    </section>
+  )
+}
+
 function Editor({
   portfolio,
   onClose,
@@ -1297,6 +1315,13 @@ function App() {
     readStoredFlag(gettingStartedDismissedKey),
   )
 
+  function acceptPortfolio(nextPortfolio: Portfolio) {
+    if (nextPortfolio.source?.isDemo) {
+      setGettingStartedDismissed(false)
+    }
+    setPortfolio(nextPortfolio)
+  }
+
   async function loadPortfolio() {
     setLoading(true)
     setError('')
@@ -1307,7 +1332,7 @@ function App() {
         setPortfolio(null)
       } else {
         setSetupRequired(false)
-        setPortfolio(nextPortfolio)
+        acceptPortfolio(nextPortfolio)
       }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load portfolio.')
@@ -1328,7 +1353,7 @@ function App() {
             setPortfolio(null)
           } else {
             setSetupRequired(false)
-            setPortfolio(nextPortfolio)
+            acceptPortfolio(nextPortfolio)
           }
         }
       } catch (loadError) {
@@ -1358,7 +1383,7 @@ function App() {
           removeStoredFlag(gettingStartedDismissedKey)
           setGettingStartedDismissed(false)
           setSetupRequired(false)
-          setPortfolio(nextPortfolio)
+          acceptPortfolio(nextPortfolio)
         }}
       />
     )
@@ -1371,6 +1396,7 @@ function App() {
   const { settings, metrics } = portfolio
   const hasHoldings = portfolio.holdings.length > 0
   const showGettingStarted = !gettingStartedDismissed
+  const sampleDataActive = portfolio.source?.isDemo
 
   return (
     <>
@@ -1401,6 +1427,8 @@ function App() {
             <span>As of {settings.asOfLabel}</span>
           </div>
         </header>
+
+        {sampleDataActive ? <SampleDataNotice onEdit={() => setEditorOpen(true)} /> : null}
 
         <section className="metric-strip" aria-label="Portfolio metrics">
           <div>
@@ -1505,7 +1533,7 @@ function App() {
         <Editor
           portfolio={portfolio}
           onClose={() => setEditorOpen(false)}
-          onSaved={(nextPortfolio) => setPortfolio(nextPortfolio)}
+          onSaved={(nextPortfolio) => acceptPortfolio(nextPortfolio)}
         />
       ) : null}
       {showGettingStarted ? (

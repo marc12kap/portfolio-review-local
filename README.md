@@ -57,6 +57,10 @@ Recommended first-time flow:
 6. Confirm available cash, beginning book value, performance CSV history, and price badges before
    relying on the report.
 
+While demo data is active, the dashboard keeps a sample-data notice visible so you do not mistake
+the seeded portfolio for your own book. Starting blank, importing CSV data, or saving your own edits
+marks the local data as user-owned.
+
 After setup, use `Edit Positions` and the `Reset local files` actions to back up your current files
 and either start blank or reload the demo portfolio. Reset actions require typed confirmation before
 anything is replaced.
@@ -82,6 +86,7 @@ Your working files live in `data/` and are ignored by Git:
 data/positions.csv
 data/settings.json
 data/performance.csv
+data/source.json
 data/logos/
 data/backups/
 ```

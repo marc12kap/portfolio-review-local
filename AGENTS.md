@@ -19,6 +19,7 @@ Help the user run or improve the app without taking ownership of their portfolio
 - `src/`: React app
 - `data/`: ignored local portfolio data created on first run
 - `data/backups/`: ignored timestamped backups created before local saves
+- `data/source.json`: ignored local metadata that tracks demo versus user-owned data
 - `demo-data/sample/`: committed demo defaults used to seed missing local data
 - `.github/workflows/ci.yml`: GitHub Actions validation
 - `README.md`: user-facing overview
@@ -56,6 +57,9 @@ The expected first-time workflow is:
 If the user asks for AI-assisted seeding, ask them to paste or attach non-sensitive holdings data
 such as ticker, company, shares/contracts, average cost, market value if known, sector/theme, option
 type, strike, expiry, and premium. Do not ask for brokerage passwords or account logins.
+
+Keep `data/source.json` aligned with the active data state: demo setup/reset should mark `demo`;
+blank setup, import setup, and user saves should mark `user`.
 
 ## If Node Or npm Is Missing
 
