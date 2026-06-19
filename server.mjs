@@ -17,6 +17,7 @@ const currentSchemaVersion = 1
 const reportingTimeZone = 'America/New_York'
 const priceCache = new Map()
 const isMainModule = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false
+const appVersion = JSON.parse(await readFile(join(root, 'package.json'), 'utf8')).version || '0.0.0'
 const restorableDataFiles = [
   { fileType: 'settings', targetFileName: 'settings.json', baseName: 'settings', extension: '.json', label: 'Settings' },
   { fileType: 'positions', targetFileName: 'positions.csv', baseName: 'positions', extension: '.csv', label: 'Positions' },
@@ -217,6 +218,18 @@ async function readPortfolioSource(settings = null) {
   return { source: 'user', isDemo: false }
 }
 
+async function readPortfolioSourceMetadata(baseDir = dataDir) {
+  try {
+    const raw = await readFile(join(baseDir, 'source.json'), 'utf8')
+    const parsed = JSON.parse(raw)
+    if (parsed?.source === 'demo') return { source: 'demo', isDemo: true, updatedAt: parsed.updatedAt || null }
+    if (parsed?.source === 'user') return { source: 'user', isDemo: false, updatedAt: parsed.updatedAt || null }
+    return { source: 'unknown', isDemo: false, updatedAt: null }
+  } catch {
+    return { source: 'missing', isDemo: false, updatedAt: null }
+  }
+}
+
 async function initializePortfolioData(payload) {
   const mode = String(payload?.mode || '')
 
@@ -386,6 +399,166 @@ async function restoreLocalBackup(payload, baseDir = dataDir) {
   return {
     restored: backup,
     currentBackupFileName,
+  }
+}
+
+async function statLocalFile(baseDir, fileName) {
+  const filePath = join(baseDir, fileName)
+  const fileStat = await stat(filePath).catch(() => null)
+  return {
+    fileName,
+    exists: Boolean(fileStat?.isFile()),
+    sizeBytes: fileStat?.isFile() ? fileStat.size : 0,
+    updatedAt: fileStat?.isFile() ? fileStat.mtime.toISOString() : null,
+  }
+}
+
+function summarizePriceCache(raw) {
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return {
+      exists: true,
+      ok: false,
+      recordCount: 0,
+      newestFetchedAt: null,
+      message: 'Price cache exists but is not valid JSON.',
+    }
+  }
+
+  const records = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? Object.values(parsed) : []
+  const timestamps = records
+    .map((record) => Number(record?.fetchedAt))
+    .filter((fetchedAt) => Number.isFinite(fetchedAt) && fetchedAt > 0)
+  const newestFetchedAt = timestamps.length ? new Date(Math.max(...timestamps)).toISOString() : null
+
+  return {
+    exists: true,
+    ok: true,
+    recordCount: records.length,
+    newestFetchedAt,
+    message: records.length ? 'Last-known price cache is available.' : 'Price cache is empty.',
+  }
+}
+
+async function readPriceCacheHealth(baseDir = dataDir) {
+  const filePath = join(baseDir, 'price-cache.json')
+  if (!(await pathExists(filePath))) {
+    return {
+      exists: false,
+      ok: true,
+      recordCount: 0,
+      newestFetchedAt: null,
+      message: 'No last-known price cache yet. It will be created after successful price lookups.',
+    }
+  }
+  return summarizePriceCache(await readFile(filePath, 'utf8'))
+}
+
+async function readSchemaHealth(baseDir = dataDir) {
+  const filePath = join(baseDir, 'schema.json')
+  if (!(await pathExists(filePath))) {
+    return {
+      exists: false,
+      ok: false,
+      version: null,
+      currentVersion: currentSchemaVersion,
+      migrationCount: 0,
+      latestMigrationAt: null,
+      message: 'Schema metadata is missing. Setup or migration will recreate it.',
+    }
+  }
+
+  try {
+    const metadata = JSON.parse(await readFile(filePath, 'utf8'))
+    const migrations = Array.isArray(metadata?.migrations) ? metadata.migrations : []
+    const latestMigrationAt = migrations
+      .map((migration) => migration?.appliedAt)
+      .filter(Boolean)
+      .sort()
+      .at(-1) || null
+
+    return {
+      exists: true,
+      ok: metadata?.version === currentSchemaVersion,
+      version: Number.isInteger(metadata?.version) ? metadata.version : null,
+      currentVersion: currentSchemaVersion,
+      migrationCount: migrations.length,
+      latestMigrationAt,
+      message:
+        metadata?.version === currentSchemaVersion
+          ? 'Local schema metadata is current.'
+          : 'Local schema metadata is missing or older than the app expects.',
+    }
+  } catch {
+    return {
+      exists: true,
+      ok: false,
+      version: null,
+      currentVersion: currentSchemaVersion,
+      migrationCount: 0,
+      latestMigrationAt: null,
+      message: 'Schema metadata exists but is not valid JSON.',
+    }
+  }
+}
+
+async function buildHealthCheck(baseDir = dataDir) {
+  await mkdir(baseDir, { recursive: true })
+  const fileNames = ['settings.json', 'positions.csv', 'performance.csv', 'source.json', 'schema.json']
+  const [files, schema, backups, source, priceCache] = await Promise.all([
+    Promise.all(fileNames.map((fileName) => statLocalFile(baseDir, fileName))),
+    readSchemaHealth(baseDir),
+    listLocalBackups(baseDir),
+    readPortfolioSourceMetadata(baseDir),
+    readPriceCacheHealth(baseDir),
+  ])
+  const requiredFiles = files.filter((file) =>
+    ['settings.json', 'positions.csv', 'performance.csv'].includes(file.fileName),
+  )
+  const missingRequired = requiredFiles.filter((file) => !file.exists).map((file) => file.fileName)
+  const setupRequired = missingRequired.length > 0
+  const checks = {
+    server: { ok: true, message: 'Local server is running.' },
+    dataFiles: {
+      ok: !setupRequired,
+      missingRequired,
+      message: setupRequired
+        ? 'Choose demo, blank, or import setup to create missing local files.'
+        : 'Required local portfolio files are present.',
+    },
+    schema: { ok: schema.ok, message: schema.message },
+    backups: {
+      ok: true,
+      message: backups.length
+        ? `${backups.length} local backup file${backups.length === 1 ? '' : 's'} found.`
+        : 'No backup files found yet. Backups appear after saves, imports, resets, or migrations.',
+    },
+    priceCache: { ok: priceCache.ok, message: priceCache.message },
+  }
+  const ok = Object.values(checks).every((check) => check.ok)
+
+  return {
+    ok,
+    version: appVersion,
+    checkedAt: new Date().toISOString(),
+    setupRequired,
+    checks,
+    files,
+    schema,
+    backups: {
+      count: backups.length,
+      newestCreatedAt: backups[0]?.createdAt || null,
+    },
+    source,
+    priceCache,
+    nextSteps: [
+      ...(setupRequired ? ['Open the setup screen and choose demo, blank, or import.'] : []),
+      ...(!schema.ok ? ['Restart or refresh the app so local data migrations can run.'] : []),
+      ...(!priceCache.ok ? ['Delete data/price-cache.json and refresh live prices.'] : []),
+      ...(ok ? ['No action needed.'] : []),
+    ],
   }
 }
 
@@ -1727,6 +1900,11 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url, `http://${request.headers.host}`)
 
+    if (url.pathname === '/api/health' && request.method === 'GET') {
+      sendJson(response, 200, await buildHealthCheck())
+      return
+    }
+
     if (url.pathname === '/api/portfolio' && request.method === 'GET') {
       sendJson(response, 200, await buildPortfolio())
       return
@@ -1852,6 +2030,7 @@ const server = createServer(async (request, response) => {
 })
 
 export {
+  buildHealthCheck,
   cleanBenchmarkTicker,
   consolidatePositions,
   inferStructure,

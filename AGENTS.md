@@ -208,5 +208,6 @@ After setup or code changes:
 - The local server starts without port errors.
 - `/` returns `200` and includes the React root.
 - `/api/portfolio` returns `200` JSON.
+- `/api/health` returns `200` JSON with status/counts only.
 - If browser automation is available, open the local URL and confirm the dashboard renders.
 - Final response includes the local URL, changed port if any, validation run, and any unresolved issue.

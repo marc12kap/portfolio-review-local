@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
+  Activity,
+  AlertTriangle,
+  CheckCircle2,
   Edit3,
   Eye,
   EyeOff,
@@ -198,6 +201,48 @@ type BackupRestoreResponse = {
   portfolio: PortfolioResponse
 }
 
+type HealthFileStatus = {
+  fileName: string
+  exists: boolean
+  sizeBytes: number
+  updatedAt: string | null
+}
+
+type HealthCheck = {
+  ok: boolean
+  version: string
+  checkedAt: string
+  setupRequired: boolean
+  checks: Record<string, { ok: boolean; message: string; missingRequired?: string[] }>
+  files: HealthFileStatus[]
+  schema: {
+    exists: boolean
+    ok: boolean
+    version: number | null
+    currentVersion: number
+    migrationCount: number
+    latestMigrationAt: string | null
+    message: string
+  }
+  backups: {
+    count: number
+    newestCreatedAt: string | null
+  }
+  source: {
+    source: string
+    isDemo: boolean
+    updatedAt: string | null
+  }
+  priceCache: {
+    exists: boolean
+    ok: boolean
+    recordCount: number
+    newestFetchedAt: string | null
+    message: string
+  }
+  nextSteps: string[]
+}
+
 function readStoredFlag(key: string) {
   try {
     return globalThis.localStorage?.getItem(key) === 'true'
@@ -320,6 +365,16 @@ async function postBackupRestore(fileName: string) {
   return (await response.json()) as BackupRestoreResponse
 }
 
+async function fetchHealthCheck() {
+  const response = await fetch('/api/health')
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
+    throw new Error([payload.error || 'Unable to load health check.', details].filter(Boolean).join('\n'))
+  }
+  return (await response.json()) as HealthCheck
+}
+
 function formatBackupDate(value: string) {
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
@@ -327,6 +382,10 @@ function formatBackupDate(value: string) {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(date)
+}
+
+function formatHealthDate(value: string | null) {
+  return value ? formatBackupDate(value) : 'Not available'
 }
 
 function formatFileSize(bytes: number) {
@@ -1815,7 +1874,129 @@ function LoadErrorState({ error, onRetry }: { error: string; onRetry: () => void
   )
 }
 
-function FirstRunSetup({ onReady }: { onReady: (portfolio: Portfolio) => void }) {
+function HealthCheckPanel({
+  health,
+  loading,
+  error,
+  onRefresh,
+  onClose,
+}: {
+  health: HealthCheck | null
+  loading: boolean
+  error: string
+  onRefresh: () => void
+  onClose: () => void
+}) {
+  const fileSummary = health?.files.map((file) => `${file.fileName}: ${file.exists ? 'Found' : 'Missing'}`) || []
+
+  return (
+    <div className="health-backdrop" role="presentation">
+      <aside className="health-panel" aria-label="Local app health check">
+        <div className="health-header">
+          <div>
+            <span>Local Checkup</span>
+            <h2>App Health</h2>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Close health check">
+            <X size={18} aria-hidden="true" />
+          </button>
+        </div>
+
+        <div className={`health-summary ${health?.ok ? 'is-ok' : 'needs-attention'}`}>
+          {health?.ok ? <CheckCircle2 size={20} aria-hidden="true" /> : <AlertTriangle size={20} aria-hidden="true" />}
+          <div>
+            <strong>{loading ? 'Checking local app...' : health?.ok ? 'Local app looks healthy' : 'Needs attention'}</strong>
+            <p>
+              Version {health?.version || 'unknown'} - Checked {health ? formatHealthDate(health.checkedAt) : 'now'}
+            </p>
+          </div>
+        </div>
+
+        <button className="health-refresh" type="button" onClick={onRefresh} disabled={loading}>
+          <RefreshCw size={15} aria-hidden="true" />
+          {loading ? 'Checking...' : 'Run Check'}
+        </button>
+
+        {error ? (
+          <div className="editor-error health-error" role="alert">
+            {error.split('\n').map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+        ) : null}
+
+        {health ? (
+          <>
+            <div className="health-grid">
+              {Object.entries(health.checks).map(([key, check]) => (
+                <div className={check.ok ? 'is-ok' : 'needs-attention'} key={key}>
+                  <span>{key.replace(/([A-Z])/g, ' $1')}</span>
+                  <strong>{check.ok ? 'OK' : 'Review'}</strong>
+                  <small>{check.message}</small>
+                </div>
+              ))}
+            </div>
+
+            <div className="health-detail-list">
+              <div>
+                <span>Data files</span>
+                <p>{fileSummary.join(' | ')}</p>
+              </div>
+              <div>
+                <span>Schema</span>
+                <p>
+                  Version {health.schema.version ?? 'missing'} of {health.schema.currentVersion};{' '}
+                  {health.schema.migrationCount} migration record{health.schema.migrationCount === 1 ? '' : 's'}.
+                </p>
+              </div>
+              <div>
+                <span>Backups</span>
+                <p>
+                  {health.backups.count} file{health.backups.count === 1 ? '' : 's'}
+                  {health.backups.newestCreatedAt ? `; newest ${formatHealthDate(health.backups.newestCreatedAt)}` : ''}.
+                </p>
+              </div>
+              <div>
+                <span>Price cache</span>
+                <p>
+                  {health.priceCache.recordCount} cached record{health.priceCache.recordCount === 1 ? '' : 's'}
+                  {health.priceCache.newestFetchedAt
+                    ? `; newest ${formatHealthDate(health.priceCache.newestFetchedAt)}`
+                    : ''}.
+                </p>
+              </div>
+              <div>
+                <span>Source</span>
+                <p>
+                  {health.source.source === 'demo'
+                    ? 'Demo data'
+                    : health.source.source === 'user'
+                      ? 'User data'
+                      : 'Not set'}
+                </p>
+              </div>
+            </div>
+
+            <div className="health-next-steps">
+              <strong>Next steps</strong>
+              {health.nextSteps.map((step) => (
+                <p key={step}>{step}</p>
+              ))}
+            </div>
+          </>
+        ) : null}
+      </aside>
+    </div>
+  )
+}
+
+function FirstRunSetup({
+  onReady,
+  onOpenHealth,
+}: {
+  onReady: (portfolio: Portfolio) => void
+  onOpenHealth: () => void
+}) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -1845,6 +2026,10 @@ function FirstRunSetup({ onReady }: { onReady: (portfolio: Portfolio) => void })
           <p>
             The app creates editable files on this computer. You can change or reset them later.
           </p>
+          <button className="setup-health-button" type="button" onClick={onOpenHealth}>
+            <Activity size={15} aria-hidden="true" />
+            Health Check
+          </button>
         </div>
         <div className="setup-actions">
           <button type="button" onClick={() => void setup('demo')} disabled={saving}>
@@ -1875,6 +2060,10 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editorOpen, setEditorOpen] = useState(false)
+  const [healthOpen, setHealthOpen] = useState(false)
+  const [health, setHealth] = useState<HealthCheck | null>(null)
+  const [healthLoading, setHealthLoading] = useState(false)
+  const [healthError, setHealthError] = useState('')
   const [showPrivate, setShowPrivate] = useState(false)
   const [gettingStartedDismissed, setGettingStartedDismissed] = useState(() =>
     readStoredFlag(gettingStartedDismissedKey),
@@ -1904,6 +2093,23 @@ function App() {
     } finally {
       setLoading(false)
     }
+  }
+
+  async function loadHealth() {
+    setHealthLoading(true)
+    setHealthError('')
+    try {
+      setHealth(await fetchHealthCheck())
+    } catch (loadHealthError) {
+      setHealthError(loadHealthError instanceof Error ? loadHealthError.message : 'Unable to load health check.')
+    } finally {
+      setHealthLoading(false)
+    }
+  }
+
+  function openHealth() {
+    setHealthOpen(true)
+    void loadHealth()
   }
 
   useEffect(() => {
@@ -1943,14 +2149,26 @@ function App() {
 
   if (setupRequired) {
     return (
-      <FirstRunSetup
-        onReady={(nextPortfolio) => {
-          removeStoredFlag(gettingStartedDismissedKey)
-          setGettingStartedDismissed(false)
-          setSetupRequired(false)
-          acceptPortfolio(nextPortfolio)
-        }}
-      />
+      <>
+        <FirstRunSetup
+          onReady={(nextPortfolio) => {
+            removeStoredFlag(gettingStartedDismissedKey)
+            setGettingStartedDismissed(false)
+            setSetupRequired(false)
+            acceptPortfolio(nextPortfolio)
+          }}
+          onOpenHealth={openHealth}
+        />
+        {healthOpen ? (
+          <HealthCheckPanel
+            health={health}
+            loading={healthLoading}
+            error={healthError}
+            onRefresh={() => void loadHealth()}
+            onClose={() => setHealthOpen(false)}
+          />
+        ) : null}
+      </>
     )
   }
 
@@ -1976,6 +2194,9 @@ function App() {
         </button>
         <button type="button" onClick={() => void loadPortfolio()} aria-label="Refresh live prices">
           <RefreshCw size={16} aria-hidden="true" />
+        </button>
+        <button type="button" onClick={openHealth} aria-label="Open app health check" title="App health">
+          <Activity size={16} aria-hidden="true" />
         </button>
         <button type="button" onClick={() => setEditorOpen(true)}>
           <Edit3 size={15} aria-hidden="true" />
@@ -2111,6 +2332,16 @@ function App() {
             writeStoredFlag(gettingStartedDismissedKey, true)
             setGettingStartedDismissed(true)
           }}
+        />
+      ) : null}
+
+      {healthOpen ? (
+        <HealthCheckPanel
+          health={health}
+          loading={healthLoading}
+          error={healthError}
+          onRefresh={() => void loadHealth()}
+          onClose={() => setHealthOpen(false)}
         />
       ) : null}
     </>

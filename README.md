@@ -170,6 +170,17 @@ To recover from a bad local edit, open `Edit Positions`, then `Backups`, choose 
 backup, and type `RESTORE` when prompted. You can also manually copy a backup from `data/backups/`
 back to `data/` if the app cannot start.
 
+## Local Health Check
+
+Open the app health panel from the top-right controls, or call the local endpoint directly:
+
+```text
+http://127.0.0.1:8787/api/health
+```
+
+The health check reports server, data-file, schema, backup, source, and price-cache status using
+counts and file presence only. It does not return holdings, tickers, cash values, or position rows.
+
 ## Privacy Model
 
 - There is no account system, hosted backend, or cloud database.

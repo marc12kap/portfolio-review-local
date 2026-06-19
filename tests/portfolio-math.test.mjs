@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from 'node:fs/prom
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
+  buildHealthCheck,
   cleanBenchmarkTicker,
   consolidatePositions,
   inferStructure,
@@ -780,5 +781,74 @@ describe('local backup restore', () => {
     )
 
     assert.equal(await readFile(join(dir, 'positions.csv'), 'utf8'), 'ticker,quantity\nAAPL,1\n')
+  })
+})
+
+describe('local health check', () => {
+  it('reports setup-required state without exposing portfolio rows', async () => {
+    const dir = await tempDataDir()
+
+    const result = await buildHealthCheck(dir)
+
+    assert.equal(result.ok, false)
+    assert.equal(result.setupRequired, true)
+    assert.deepEqual(result.checks.dataFiles.missingRequired, [
+      'settings.json',
+      'positions.csv',
+      'performance.csv',
+    ])
+    assert.equal(result.backups.count, 0)
+    assert.equal(result.source.source, 'missing')
+    assert.equal(result.priceCache.recordCount, 0)
+    assert.equal('positions' in result, false)
+    assert.equal('holdings' in result, false)
+  })
+
+  it('summarizes local files, schema, backups, source, and price cache', async () => {
+    const dir = await tempDataDir()
+    await mkdir(join(dir, 'backups'), { recursive: true })
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({
+        accountName: 'Private Book',
+        benchmarkName: 'S&P 500',
+        benchmarkTicker: 'SPY',
+        asOfDate: '2026-06-19',
+        periodStart: '2026-01-01',
+        periodEnd: '2026-06-19',
+        accountTotal: 1000,
+        cashBalance: 100,
+        baselineInvested: 900,
+      }),
+    )
+    await writeFile(join(dir, 'positions.csv'), 'ticker,quantity\nAAPL,1\n')
+    await writeFile(join(dir, 'performance.csv'), 'date,returnPct,benchmarkReturnPct\n2026-01-01,0,\n')
+    await writeFile(join(dir, 'source.json'), JSON.stringify({ source: 'user', updatedAt: '2026-06-19T13:00:00.000Z' }))
+    await writeFile(
+      join(dir, 'schema.json'),
+      JSON.stringify({
+        version: 1,
+        migrations: [{ version: 1, appliedAt: '2026-06-19T13:00:00.000Z', changes: [] }],
+      }),
+    )
+    await writeFile(
+      join(dir, 'price-cache.json'),
+      JSON.stringify({ AAPL: { price: 200, source: 'test', fetchedAt: 1781874000000 } }),
+    )
+    await writeFile(join(dir, 'backups', 'settings-2026-06-19T13-02-01-123Z.json'), '{}')
+
+    const result = await buildHealthCheck(dir)
+
+    assert.equal(result.ok, true)
+    assert.equal(result.setupRequired, false)
+    assert.equal(result.version, '0.0.0')
+    assert.equal(result.checks.server.ok, true)
+    assert.equal(result.checks.dataFiles.ok, true)
+    assert.equal(result.schema.version, 1)
+    assert.equal(result.schema.migrationCount, 1)
+    assert.equal(result.backups.count, 1)
+    assert.equal(result.source.source, 'user')
+    assert.equal(result.priceCache.recordCount, 1)
+    assert.deepEqual(result.nextSteps, ['No action needed.'])
   })
 })
