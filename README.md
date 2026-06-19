@@ -44,7 +44,8 @@ On first run, choose one of:
 - `Import CSV`: initialize from pasted `positions.csv` contents.
 
 After setup, use `Edit Positions` and the `Reset local files` actions to back up your current files
-and either start blank or reload the demo portfolio.
+and either start blank or reload the demo portfolio. Reset actions require typed confirmation before
+anything is replaced.
 
 On Windows, `run-local.ps1` runs the same one-command local startup.
 

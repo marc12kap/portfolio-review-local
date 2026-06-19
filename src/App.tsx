@@ -105,6 +105,8 @@ type ApiErrorPayload = {
   validationErrors?: string[]
 }
 
+type ResetMode = 'demo' | 'blank'
+
 async function fetchPortfolio() {
   const response = await fetch('/api/portfolio')
   if (!response.ok) {
@@ -129,7 +131,7 @@ async function postSetup(mode: 'demo' | 'blank' | 'import', positionsCsv = '') {
   return (await response.json()) as PortfolioResponse
 }
 
-async function postReset(mode: 'demo' | 'blank') {
+async function postReset(mode: ResetMode) {
   const response = await fetch('/api/reset', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
@@ -598,6 +600,8 @@ function Editor({
   const [positions, setPositions] = useState(portfolio.positions)
   const [saving, setSaving] = useState(false)
   const [resetting, setResetting] = useState(false)
+  const [resetMode, setResetMode] = useState<ResetMode | null>(null)
+  const [resetConfirmation, setResetConfirmation] = useState('')
   const [error, setError] = useState('')
 
   function updatePosition(id: string, key: keyof Position, value: string) {
@@ -629,13 +633,13 @@ function Editor({
     }
   }
 
-  async function resetData(mode: 'demo' | 'blank') {
-    const actionLabel = mode === 'demo' ? 'reload the demo portfolio' : 'clear the portfolio and start blank'
-    const confirmed = window.confirm(
-      `This will ${actionLabel}. Your current settings, positions, and performance files will be backed up first, then replaced. Continue?`,
-    )
-    if (!confirmed) return
+  function openResetConfirmation(mode: ResetMode) {
+    setResetMode(mode)
+    setResetConfirmation('')
+    setError('')
+  }
 
+  async function resetData(mode: ResetMode) {
     setResetting(true)
     setError('')
     try {
@@ -651,6 +655,14 @@ function Editor({
       setResetting(false)
     }
   }
+
+  const resetPhrase = resetMode === 'demo' ? 'RELOAD DEMO' : 'START BLANK'
+  const resetTitle = resetMode === 'demo' ? 'Reload demo data' : 'Start with blank files'
+  const resetDescription =
+    resetMode === 'demo'
+      ? 'This replaces your current local portfolio with the fictional demo portfolio.'
+      : 'This replaces your current local portfolio with empty starter files.'
+  const resetAllowed = resetConfirmation.trim() === resetPhrase
 
   return (
     <div className="editor-backdrop" role="presentation">
@@ -716,16 +728,56 @@ function Editor({
             <p>Back up the current files, then replace them with a blank book or fresh demo data.</p>
           </div>
           <div>
-            <button type="button" onClick={() => void resetData('blank')} disabled={resetting || saving}>
+            <button type="button" onClick={() => openResetConfirmation('blank')} disabled={resetting || saving}>
               <RotateCcw size={15} aria-hidden="true" />
               Start Blank
             </button>
-            <button type="button" onClick={() => void resetData('demo')} disabled={resetting || saving}>
+            <button type="button" onClick={() => openResetConfirmation('demo')} disabled={resetting || saving}>
               <RotateCcw size={15} aria-hidden="true" />
               Reload Demo
             </button>
           </div>
         </div>
+
+        {resetMode ? (
+          <div className="reset-confirmation" role="alertdialog" aria-label={resetTitle}>
+            <div>
+              <strong>{resetTitle}</strong>
+              <p>
+                {resetDescription} The app will create backups first, then replace settings,
+                positions, performance, and cached logos.
+              </p>
+              <label>
+                Type <b>{resetPhrase}</b> to continue
+                <input
+                  value={resetConfirmation}
+                  onChange={(event) => setResetConfirmation(event.target.value)}
+                  autoFocus
+                />
+              </label>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setResetMode(null)
+                  setResetConfirmation('')
+                }}
+                disabled={resetting}
+              >
+                Cancel
+              </button>
+              <button
+                className="danger-button"
+                type="button"
+                onClick={() => void resetData(resetMode)}
+                disabled={!resetAllowed || resetting}
+              >
+                {resetting ? 'Replacing...' : resetTitle}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <div className="positions-editor">
           <div className="editor-toolbar">
