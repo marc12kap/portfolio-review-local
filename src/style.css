@@ -352,6 +352,54 @@ a {
   background: #f7f6f3;
 }
 
+.allocation-snapshot {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid #dedbd4;
+  background: #ffffff;
+}
+
+.allocation-snapshot div {
+  min-height: 76px;
+  padding: 14px 21px 12px;
+  border-right: 1px solid #dedbd4;
+}
+
+.allocation-snapshot div:last-child {
+  border-right: 0;
+}
+
+.allocation-snapshot span {
+  display: block;
+  color: #a5adba;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.allocation-snapshot strong {
+  display: block;
+  min-height: 18px;
+  margin-top: 7px;
+  overflow: hidden;
+  color: #333b49;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.allocation-snapshot small {
+  display: block;
+  margin-top: 5px;
+  color: #7f8998;
+  font-size: 11px;
+  font-weight: 750;
+}
+
 .private-capital-strip div {
   min-height: 62px;
   padding: 14px 21px 12px;
