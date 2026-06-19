@@ -18,8 +18,9 @@ hosted backend.
 - Works with common stock rows, option rows, spreads, cash, fallback market values, and optional
   benchmark performance data.
 
-Using Claude Code or another coding agent? See [AGENTS.md](AGENTS.md) for agent-oriented setup and
-local run instructions.
+Using an AI coding agent? See [AGENTS.md](AGENTS.md) for agent-oriented setup and local run
+instructions. To seed your portfolio from pasted holdings, exports, screenshots, or rough notes, use
+[AI_AGENT_IMPORT.md](AI_AGENT_IMPORT.md).
 
 ## Quick Start
 
@@ -102,8 +103,9 @@ Recommended first-time flow:
 2. When you are ready to use your real portfolio, click `Edit Positions`.
 3. In the editor, use `Start Blank` under `Reset local files` to remove the seeded demo rows. The
    app creates backups before replacing anything.
-4. Add your own holdings manually in the editor, or ask an AI agent to convert an existing holdings
-   export, statement, spreadsheet, or notes into the `positions.csv` shape below.
+4. Add your own holdings manually in the editor, or ask an AI agent to follow
+   [AI_AGENT_IMPORT.md](AI_AGENT_IMPORT.md) and convert an existing holdings export, statement,
+   spreadsheet, screenshot transcription, or notes into the local file format.
 5. Put each holding into a useful `sector` or theme bucket, such as `Mega-Cap Technology`, `Broad
    Market ETFs`, `Energy`, `Cash & Equivalents`, or your own custom labels.
 6. Confirm available cash, beginning book value, performance CSV history, and price badges before
@@ -183,6 +185,9 @@ data/settings.json
 
 The report intentionally emphasizes percentages. The editor asks for available cash; the app
 calculates current book value from live/fallback holdings value plus that cash balance.
+
+For faster setup, ask an AI agent to follow [AI_AGENT_IMPORT.md](AI_AGENT_IMPORT.md). The agent
+should draft and preview normalized local files first, then write them only after you confirm.
 
 `data/settings.json` includes `cashBalance` for available cash. Older local files that only include
 `accountTotal` still work; the app derives cash from legacy book value minus invested value until the

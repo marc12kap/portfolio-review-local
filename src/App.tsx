@@ -769,8 +769,8 @@ function WelcomeGettingStartedModal({
           <li>
             <a href="/api/positions.csv" target="_blank" rel="noreferrer">
               <b>4</b>
-              <span>Use AI for faster import</span>
-              <small>Ask an AI agent to convert your holdings export or notes into the positions CSV format.</small>
+              <span>Use an AI agent for import</span>
+              <small>Ask an AI agent to preview your holdings as local CSV rows before anything is saved.</small>
             </a>
           </li>
           <li>
@@ -1273,9 +1273,8 @@ function FirstRunSetup({ onReady }: { onReady: (portfolio: Portfolio) => void })
         <label className="csv-import">
           Import positions CSV
           <small>
-            Paste a CSV with headers like ticker, company, underlying, assetType, side, quantity,
-            averageCost, multiplier, marketValue, optionType, strikePrice, expiryDate, premium,
-            sector, structure, and logoUrl.
+            Paste reviewed CSV rows from your spreadsheet or AI agent. Ask the agent to preview
+            assumptions, missing fields, sectors, cash, and ticker issues before you import.
           </small>
           <textarea
             value={positionsCsv}

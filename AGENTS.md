@@ -18,6 +18,7 @@ Help the user run or improve the app without taking ownership of their portfolio
 - `run-local.bat`: Windows double-click launcher
 - `run-local.ps1`: Windows PowerShell launcher used by the batch file
 - `run-local.command`: macOS double-click launcher
+- `AI_AGENT_IMPORT.md`: agent-facing portfolio seeding workflow and prompt
 - `server.mjs`: local server and API routes
 - `src/`: React app
 - `data/`: ignored local portfolio data created on first run
@@ -78,9 +79,10 @@ The expected first-time workflow is:
 6. Confirm available cash, beginning book value, performance history, and price badges before they
    rely on the report.
 
-If the user asks for AI-assisted seeding, ask them to paste or attach non-sensitive holdings data
-such as ticker, company, shares/contracts, average cost, market value if known, sector/theme, option
-type, strike, expiry, and premium. Do not ask for brokerage passwords or account logins.
+If the user asks for AI-assisted seeding, follow `AI_AGENT_IMPORT.md`. Ask them to paste or attach
+non-sensitive holdings data such as ticker, company, shares/contracts, average cost, market value if
+known, sector/theme, option type, strike, expiry, and premium. Do not ask for brokerage passwords or
+account logins. Summarize assumptions and preview proposed local files before writing anything.
 
 Keep `data/source.json` aligned with the active data state: demo setup/reset should mark `demo`;
 blank setup, import setup, and user saves should mark `user`.
