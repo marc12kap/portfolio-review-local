@@ -3,6 +3,7 @@ import {
   Activity,
   AlertTriangle,
   CheckCircle2,
+  Copy,
   Edit3,
   Eye,
   EyeOff,
@@ -139,6 +140,41 @@ type ApiErrorPayload = {
 
 type ResetMode = 'demo' | 'blank'
 const gettingStartedDismissedKey = 'portfolio-review-demo-flow-modal-dismissed'
+
+const aiAgentImportPrompt = `I want you to help seed my local Portfolio Review Local dashboard.
+
+Use only the local files in this project folder. Do not ask for brokerage login credentials, account numbers, passwords, API keys, or any data I do not choose to provide in this chat.
+
+First, inspect README.md, AGENTS.md, and AI_AGENT_IMPORT.md so you understand the local data contracts. Then ask me for non-sensitive holdings data such as ticker, company, shares/contracts, side, average cost, current market value if known, sector/theme, option type, strike, expiration, premium, available cash, beginning book value, benchmark, and optional performance history.
+
+Draft positions CSV using exactly these headers:
+
+id,ticker,company,underlying,assetType,side,quantity,averageCost,multiplier,marketValue,optionType,strikePrice,expiryDate,premium,sector,structure,logoUrl
+
+Use assetType values stock, option, spread, or cash. Use side values long or short. Use initials, none, or no-logo for private, ambiguous, stale, or low-confidence logos.
+
+Optionally draft settings JSON with this shape:
+
+{
+  "accountName": "Personal Portfolio Book",
+  "benchmarkName": "S&P 500",
+  "benchmarkTicker": "SPY",
+  "cashBalance": 0,
+  "baselineInvested": 0
+}
+
+Only draft performance CSV if I provide performance history:
+
+date,returnPct,benchmarkReturnPct
+2026-01-01,0,0
+
+Before saving anything, summarize inferred holdings, list assumptions and missing fields, and preview the proposed positions table. Use the local dry-run endpoint first:
+
+POST /api/import/preview
+
+Send JSON with positionsCsv, optional settingsJson or settings, and optional performanceCsv. Review validation errors, missing sectors, missing values, option-detail gaps, price-review rows, ticker/logo review rows, and assumptions.
+
+Ask me to confirm before writing local files. After I confirm, create backups first, save the local files, run npm run check, start the app, and tell me which rows still need review.`
 
 type ImportReviewRow = {
   rowNumber: number
@@ -1132,6 +1168,8 @@ function AiImportWorkflow({
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [confirmed, setConfirmed] = useState(false)
   const [working, setWorking] = useState(false)
+  const [promptCopied, setPromptCopied] = useState(false)
+  const [promptCopyError, setPromptCopyError] = useState('')
   const [error, setError] = useState('')
 
   const payload = { positionsCsv, settingsJson, performanceCsv }
@@ -1167,6 +1205,17 @@ function AiImportWorkflow({
     }
   }
 
+  async function copyAgentPrompt() {
+    setPromptCopied(false)
+    setPromptCopyError('')
+    try {
+      await navigator.clipboard.writeText(aiAgentImportPrompt)
+      setPromptCopied(true)
+    } catch {
+      setPromptCopyError('Copy failed. Select the prompt text below instead.')
+    }
+  }
+
   return (
     <section className={`ai-import-workflow ${compact ? 'is-compact' : ''}`} aria-label="AI import preview">
       <div className="ai-import-heading">
@@ -1182,6 +1231,21 @@ function AiImportWorkflow({
             <X size={16} aria-hidden="true" />
           </button>
         ) : null}
+      </div>
+
+      <div className="agent-prompt-helper">
+        <div>
+          <strong>Ask an AI agent to draft these files</strong>
+          <p>Copy a provider-neutral prompt with the CSV headers, optional settings, and preview-first workflow.</p>
+        </div>
+        <button type="button" onClick={() => void copyAgentPrompt()}>
+          {promptCopied ? <CheckCircle2 size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
+          {promptCopied ? 'Copied' : 'Copy Prompt'}
+        </button>
+        <details open={Boolean(promptCopyError)}>
+          <summary>{promptCopyError || 'View prompt text'}</summary>
+          <textarea readOnly value={aiAgentImportPrompt} aria-label="AI agent import prompt" />
+        </details>
       </div>
 
       <label>

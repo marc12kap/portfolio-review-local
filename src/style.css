@@ -321,6 +321,66 @@ a {
   color: #384252;
 }
 
+.agent-prompt-helper {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid #dcd8cf;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.agent-prompt-helper strong {
+  display: block;
+  color: #303846;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.agent-prompt-helper p {
+  margin: 4px 0 0;
+  color: #697484;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.agent-prompt-helper button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid #2f725f;
+  border-radius: 4px;
+  background: #2f725f;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.agent-prompt-helper details {
+  grid-column: 1 / -1;
+}
+
+.agent-prompt-helper summary {
+  cursor: pointer;
+  color: #2b735e;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.agent-prompt-helper textarea {
+  margin-top: 8px;
+  min-height: 180px;
+}
+
 .ai-import-workflow label {
   display: grid;
   gap: 7px;
@@ -2237,6 +2297,7 @@ a {
 @media (max-width: 820px) {
   .settings-grid,
   .ai-import-optional-grid,
+  .agent-prompt-helper,
   .import-preview-grid,
   .import-confirmation,
   .health-grid,

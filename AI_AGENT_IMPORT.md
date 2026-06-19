@@ -9,7 +9,8 @@ chooses to provide.
 
 ## Recommended User Prompt
 
-Paste this into an AI coding agent after opening this project folder:
+Paste this into an AI coding agent after opening this project folder. The in-app AI import workflow
+also includes a copyable version of this prompt for convenience:
 
 ```text
 I want you to help seed my local Portfolio Review Local dashboard.
