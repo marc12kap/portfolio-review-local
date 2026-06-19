@@ -736,41 +736,51 @@ function WelcomeGettingStartedModal({
           <span>Welcome</span>
           <h2 id="welcome-title">Get Your Portfolio Ready</h2>
           <p>
-            A quick local checklist before you rely on the dashboard. Everything here works from
-            editable files on this computer.
+            Work through these steps once, then dismiss this note. Your portfolio files stay on
+            this computer and can be edited any time.
           </p>
         </div>
-        <div className="welcome-list">
-          <button type="button" className={hasHoldings ? 'done' : ''} onClick={onEdit}>
-            <b>{hasHoldings ? 'Done' : 'Start'}</b>
-            <span>Edit positions</span>
-            <small>Add holdings, cash, option rows, and fallback values when needed.</small>
-          </button>
-          <button type="button" className={showPrivate ? 'done' : ''} onClick={onShowPrivate}>
-            <b>{showPrivate ? 'Shown' : 'Review'}</b>
-            <span>Check book values</span>
-            <small>Confirm available cash and beginning book value in the editor.</small>
-          </button>
-          <a href="/api/performance.csv" target="_blank" rel="noreferrer" className={hasPerformance ? 'done' : ''}>
-            <b>{hasPerformance ? 'Ready' : 'CSV'}</b>
-            <span>Review performance</span>
-            <small>Use the local performance CSV for YTD and benchmark history.</small>
-          </a>
-          <button type="button" className={!hasPriceIssues ? 'done' : ''} onClick={onEdit}>
-            <b>{hasPriceIssues ? 'Fix' : 'Clear'}</b>
-            <span>Validate prices</span>
-            <small>
-              {hasFallbackOrCachedPrices
-                ? 'Live, cached, and fallback price badges show source status.'
-                : 'Fresh live prices are flowing for current holdings.'}
-            </small>
-          </button>
-          <a href="/api/positions.csv" target="_blank" rel="noreferrer" className="done">
-            <b>Local</b>
-            <span>Know backups</span>
-            <small>Editor saves and reset actions create timestamped local backups.</small>
-          </a>
-        </div>
+        <ol className="welcome-list">
+          <li>
+            <button type="button" className={hasHoldings ? 'done' : ''} onClick={onEdit}>
+              <b>1</b>
+              <span>Enter your holdings</span>
+              <small>Add stocks, ETFs, options, cash, and any manual fallback values you already know.</small>
+            </button>
+          </li>
+          <li>
+            <button type="button" className={showPrivate ? 'done' : ''} onClick={onShowPrivate}>
+              <b>2</b>
+              <span>Confirm cash and book value</span>
+              <small>Show private values, then check available cash and beginning book value.</small>
+            </button>
+          </li>
+          <li>
+            <a href="/api/performance.csv" target="_blank" rel="noreferrer" className={hasPerformance ? 'done' : ''}>
+              <b>3</b>
+              <span>Review performance history</span>
+              <small>Open the local CSV if you want YTD and benchmark history to match your records.</small>
+            </a>
+          </li>
+          <li>
+            <button type="button" className={!hasPriceIssues ? 'done' : ''} onClick={onEdit}>
+              <b>4</b>
+              <span>Check price status</span>
+              <small>
+                {hasFallbackOrCachedPrices
+                  ? 'Look for Live, Cached, Fallback, or Missing badges and fix rows that need attention.'
+                  : 'Live prices are flowing; still scan the badges before relying on the report.'}
+              </small>
+            </button>
+          </li>
+          <li>
+            <a href="/api/positions.csv" target="_blank" rel="noreferrer" className="done">
+              <b>5</b>
+              <span>Know where backups live</span>
+              <small>Editor saves and reset actions create timestamped backups in the local data folder.</small>
+            </a>
+          </li>
+        </ol>
         <div className="welcome-actions">
           <button type="button" onClick={onDismiss}>
             Dismiss
