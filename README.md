@@ -333,6 +333,12 @@ npm run release:zip
 
 The generated ZIP is written to `release/`.
 
+## Versioning
+
+The first public app version is `1.0.1`. Release PRs should update `package.json` and
+`package-lock.json`: continue `1.0.2` through `1.0.9`, then `1.1.1`, `1.1.2`, and so on. Reserve a
+new major version such as `2.0.1` for a substantial new app version or UI/UX direction.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).

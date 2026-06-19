@@ -11,6 +11,9 @@ Help the user run or improve the app without taking ownership of their portfolio
 - Treat `demo-data/sample/` as the committed example dataset.
 - Prefer small, reviewable changes with `npm run check` passing.
 - When a local server is started, report the exact URL and port.
+- For release PRs, update the app version in `package.json` and `package-lock.json`. Start at
+  `1.0.1`, continue through `1.0.9`, then use `1.1.1`, `1.1.2`, and so on. Reserve a new major
+  version such as `2.0.1` for a substantial new app version or UI/UX direction.
 
 ## Key Files
 

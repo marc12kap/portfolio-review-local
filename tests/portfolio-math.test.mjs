@@ -843,7 +843,7 @@ describe('local health check', () => {
 
     assert.equal(result.ok, true)
     assert.equal(result.setupRequired, false)
-    assert.equal(result.version, '0.0.0')
+    assert.equal(result.version, '1.0.1')
     assert.equal(result.checks.server.ok, true)
     assert.equal(result.checks.dataFiles.ok, true)
     assert.equal(result.schema.version, 1)
