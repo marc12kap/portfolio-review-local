@@ -1697,6 +1697,121 @@ a {
   opacity: 0.65;
 }
 
+.backup-panel {
+  margin: -10px 26px 22px;
+  padding: 14px;
+  border: 1px solid #dcd8cf;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.backup-panel-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+}
+
+.backup-panel-heading strong {
+  display: block;
+  color: #303846;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.backup-panel-heading p,
+.backup-empty {
+  margin: 5px 0 0;
+  color: #697484;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.backup-panel-heading button,
+.backup-row button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  border: 1px solid #d9d4cb;
+  border-radius: 4px;
+  background: #fbfbfa;
+  color: #384252;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.backup-panel-heading button:disabled,
+.backup-row button:disabled {
+  cursor: progress;
+  opacity: 0.65;
+}
+
+.backup-success {
+  margin-top: 12px;
+  padding: 9px 10px;
+  border: 1px solid #c6ded2;
+  border-radius: 4px;
+  background: #f4fbf7;
+  color: #2f725f;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.backup-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.backup-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #ece8e1;
+  border-radius: 4px;
+  background: #fbfbfa;
+}
+
+.backup-row span {
+  display: inline-flex;
+  margin-bottom: 4px;
+  padding: 2px 6px;
+  border: 1px solid #d8d4cc;
+  border-radius: 4px;
+  color: #6f7987;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.backup-row strong {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #303846;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.backup-row small {
+  display: block;
+  overflow-wrap: anywhere;
+  margin-top: 3px;
+  color: #7a8391;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.backup-confirmation {
+  margin-top: -10px;
+}
+
 .reset-confirmation {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -1918,11 +2033,17 @@ a {
   .settings-grid,
   .ai-import-optional-grid,
   .import-preview-grid,
-  .import-confirmation {
+  .import-confirmation,
+  .backup-panel-heading,
+  .backup-row,
+  .reset-confirmation {
     grid-template-columns: 1fr;
   }
 
-  .import-confirmation button {
+  .import-confirmation button,
+  .backup-panel-heading button,
+  .backup-row button,
+  .reset-confirmation button {
     width: 100%;
   }
 }

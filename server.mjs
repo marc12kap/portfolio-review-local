@@ -17,6 +17,19 @@ const currentSchemaVersion = 1
 const reportingTimeZone = 'America/New_York'
 const priceCache = new Map()
 const isMainModule = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false
+const restorableDataFiles = [
+  { fileType: 'settings', targetFileName: 'settings.json', baseName: 'settings', extension: '.json', label: 'Settings' },
+  { fileType: 'positions', targetFileName: 'positions.csv', baseName: 'positions', extension: '.csv', label: 'Positions' },
+  {
+    fileType: 'performance',
+    targetFileName: 'performance.csv',
+    baseName: 'performance',
+    extension: '.csv',
+    label: 'Performance',
+  },
+  { fileType: 'source', targetFileName: 'source.json', baseName: 'source', extension: '.json', label: 'Source metadata' },
+  { fileType: 'schema', targetFileName: 'schema.json', baseName: 'schema', extension: '.json', label: 'Schema metadata' },
+]
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8',
@@ -56,10 +69,14 @@ async function ensureLocalDataDirectories() {
   await mkdir(logoDir, { recursive: true })
 }
 
-async function hasLocalPortfolioData() {
+async function hasLocalPortfolioDataIn(baseDir = dataDir) {
   const requiredFiles = ['settings.json', 'positions.csv', 'performance.csv']
-  const results = await Promise.all(requiredFiles.map((fileName) => pathExists(join(dataDir, fileName))))
+  const results = await Promise.all(requiredFiles.map((fileName) => pathExists(join(baseDir, fileName))))
   return results.every(Boolean)
+}
+
+async function hasLocalPortfolioData() {
+  return hasLocalPortfolioDataIn(dataDir)
 }
 
 async function seedDemoDataFiles({ overwrite = false } = {}) {
@@ -238,13 +255,15 @@ async function backupLocalDataFile(fileName) {
 
 async function backupLocalDataFileIn(baseDir, fileName) {
   const sourcePath = join(baseDir, fileName)
-  if (!(await pathExists(sourcePath))) return
+  if (!(await pathExists(sourcePath))) return null
 
   const targetBackupDir = join(baseDir, 'backups')
   await mkdir(targetBackupDir, { recursive: true })
   const extension = extname(fileName)
   const baseName = fileName.slice(0, -extension.length)
-  await copyFile(sourcePath, join(targetBackupDir, `${baseName}-${backupTimestamp()}${extension}`))
+  const backupFileName = `${baseName}-${backupTimestamp()}${extension}`
+  await copyFile(sourcePath, join(targetBackupDir, backupFileName))
+  return backupFileName
 }
 
 async function backupLocalDataFiles() {
@@ -255,6 +274,119 @@ async function backupLocalDataFiles() {
     backupLocalDataFile('source.json'),
     backupLocalDataFile('schema.json'),
   ])
+}
+
+function parseBackupTimestamp(value) {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/)
+  if (!match) return null
+  const [, year, month, day, hour, minute, second, ms] = match
+  const date = new Date(`${year}-${month}-${day}T${hour}:${minute}:${second}.${ms}Z`)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
+}
+
+function backupMetadataForFileName(fileName, fileStat = null) {
+  if (fileName.includes('/') || fileName.includes('\\')) return null
+
+  for (const target of restorableDataFiles) {
+    const prefix = `${target.baseName}-`
+    if (!fileName.startsWith(prefix) || !fileName.endsWith(target.extension)) continue
+
+    const rawTimestamp = fileName.slice(prefix.length, fileName.length - target.extension.length)
+    const createdAt = parseBackupTimestamp(rawTimestamp)
+    if (!createdAt) continue
+
+    return {
+      fileName,
+      fileType: target.fileType,
+      targetFileName: target.targetFileName,
+      label: target.label,
+      createdAt,
+      sizeBytes: fileStat?.size || 0,
+    }
+  }
+
+  return null
+}
+
+async function listLocalBackups(baseDir = dataDir) {
+  const targetBackupDir = join(baseDir, 'backups')
+  if (!(await pathExists(targetBackupDir))) return []
+
+  const fileNames = await readdir(targetBackupDir)
+  const backups = await Promise.all(
+    fileNames.map(async (fileName) => {
+      const filePath = join(targetBackupDir, fileName)
+      const fileStat = await stat(filePath).catch(() => null)
+      if (!fileStat?.isFile()) return null
+      return backupMetadataForFileName(fileName, fileStat)
+    }),
+  )
+
+  return backups
+    .filter(Boolean)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt) || left.fileName.localeCompare(right.fileName))
+}
+
+function validateJsonObjectBackup(raw, label) {
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw validationError('Backup restore failed.', [`${label} backup is not valid JSON.`])
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw validationError('Backup restore failed.', [`${label} backup must be a JSON object.`])
+  }
+  return parsed
+}
+
+function validateBackupContent(info, raw) {
+  if (info.fileType === 'settings') {
+    validateSettings(validateJsonObjectBackup(raw, info.label))
+    return
+  }
+
+  if (info.fileType === 'positions') {
+    validatePositions(parseCsv(raw))
+    return
+  }
+
+  if (info.fileType === 'performance') {
+    parsePerformancePreview(raw)
+    return
+  }
+
+  validateJsonObjectBackup(raw, info.label)
+}
+
+async function restoreLocalBackup(payload, baseDir = dataDir) {
+  const fileName = String(payload?.fileName || '')
+  const backups = await listLocalBackups(baseDir)
+  const backup = backups.find((candidate) => candidate.fileName === fileName)
+
+  if (!backup) {
+    throw validationError('Backup restore failed.', ['Choose a backup file from data/backups.'])
+  }
+
+  const targetBackupDir = resolve(baseDir, 'backups')
+  const backupPath = resolve(targetBackupDir, backup.fileName)
+  const targetPath = resolve(baseDir, backup.targetFileName)
+  const safeBaseDir = resolve(baseDir)
+
+  if (!backupPath.startsWith(targetBackupDir) || !targetPath.startsWith(safeBaseDir)) {
+    throw validationError('Backup restore failed.', ['Backup path is outside the local data folder.'])
+  }
+
+  validateBackupContent(backup, await readFile(backupPath, 'utf8'))
+  const currentBackupFileName = await backupLocalDataFileIn(baseDir, backup.targetFileName)
+  await copyFile(backupPath, targetPath)
+
+  if (await hasLocalPortfolioDataIn(baseDir)) await migrateLocalDataFiles(baseDir)
+
+  return {
+    restored: backup,
+    currentBackupFileName,
+  }
 }
 
 async function resetPortfolioData(payload) {
@@ -1620,6 +1752,18 @@ const server = createServer(async (request, response) => {
       return
     }
 
+    if (url.pathname === '/api/backups' && request.method === 'GET') {
+      sendJson(response, 200, { backups: await listLocalBackups() })
+      return
+    }
+
+    if (url.pathname === '/api/backups/restore' && request.method === 'POST') {
+      const body = await readBody(request)
+      const restore = await restoreLocalBackup(body)
+      sendJson(response, 200, { restore, portfolio: await buildPortfolio() })
+      return
+    }
+
     if (url.pathname === '/api/setup' && request.method === 'POST') {
       const body = await readBody(request)
       await initializePortfolioData(body)
@@ -1712,11 +1856,13 @@ export {
   consolidatePositions,
   inferStructure,
   isoDateInTimeZone,
+  listLocalBackups,
   logoCandidatesForPosition,
   migrateLocalDataFiles,
   normalizePerformanceForReport,
   normalizeReportingDates,
   previewPortfolioImport,
+  restoreLocalBackup,
   validatePositions,
   validateSettings,
 }

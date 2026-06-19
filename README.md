@@ -148,7 +148,9 @@ The repo ships demo data in `demo-data/sample`. Your personal edits stay in `dat
 deliberately share them.
 
 When you save from the in-app editor, the server writes timestamped backups to `data/backups/`.
-Resetting to blank or demo data also creates backups before replacing local files.
+Resetting to blank or demo data also creates backups before replacing local files. Use `Edit
+Positions`, then `Backups` to inspect local backup files and restore one file at a time with typed
+confirmation. A restore creates a fresh backup of the current matching file before replacing it.
 
 ## Local Data Migrations
 
@@ -164,8 +166,9 @@ Migrations are designed to:
 - Preserve extra CSV columns during the migration rewrite.
 - Stop with a clear error if a file cannot be migrated safely, such as invalid JSON.
 
-To recover from a bad local edit, copy the newest relevant file from `data/backups/` back to
-`data/`, then restart the app.
+To recover from a bad local edit, open `Edit Positions`, then `Backups`, choose the newest relevant
+backup, and type `RESTORE` when prompted. You can also manually copy a backup from `data/backups/`
+back to `data/` if the app cannot start.
 
 ## Privacy Model
 

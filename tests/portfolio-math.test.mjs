@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { mkdtemp, readFile, readdir, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import {
@@ -8,11 +8,13 @@ import {
   consolidatePositions,
   inferStructure,
   isoDateInTimeZone,
+  listLocalBackups,
   logoCandidatesForPosition,
   migrateLocalDataFiles,
   normalizePerformanceForReport,
   normalizeReportingDates,
   previewPortfolioImport,
+  restoreLocalBackup,
   validatePositions,
   validateSettings,
 } from '../server.mjs'
@@ -670,5 +672,113 @@ describe('local data migrations', () => {
     )
 
     assert.equal(await pathExists(join(dir, 'schema.json')), false)
+  })
+})
+
+describe('local backup restore', () => {
+  it('lists restorable backup files with metadata', async () => {
+    const dir = await tempDataDir()
+    await mkdir(join(dir, 'backups'), { recursive: true })
+    await writeFile(join(dir, 'backups', 'settings-2026-06-19T13-02-01-123Z.json'), '{}')
+    await writeFile(join(dir, 'backups', 'positions-2026-06-19T13-03-01-123Z.csv'), 'ticker,quantity\nAAPL,1\n')
+    await writeFile(join(dir, 'backups', 'notes-2026-06-19T13-03-01-123Z.txt'), 'ignore me')
+
+    const backups = await listLocalBackups(dir)
+
+    assert.deepEqual(
+      backups.map(({ fileName, fileType, targetFileName, label, createdAt }) => ({
+        fileName,
+        fileType,
+        targetFileName,
+        label,
+        createdAt,
+      })),
+      [
+        {
+          fileName: 'positions-2026-06-19T13-03-01-123Z.csv',
+          fileType: 'positions',
+          targetFileName: 'positions.csv',
+          label: 'Positions',
+          createdAt: '2026-06-19T13:03:01.123Z',
+        },
+        {
+          fileName: 'settings-2026-06-19T13-02-01-123Z.json',
+          fileType: 'settings',
+          targetFileName: 'settings.json',
+          label: 'Settings',
+          createdAt: '2026-06-19T13:02:01.123Z',
+        },
+      ],
+    )
+  })
+
+  it('validates and restores one backup file after backing up the current file', async () => {
+    const dir = await tempDataDir()
+    await mkdir(join(dir, 'backups'), { recursive: true })
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({
+        accountName: 'Current Book',
+        asOfDate: '2026-06-19',
+        periodStart: '2026-01-01',
+        periodEnd: '2026-06-19',
+        accountTotal: 1000,
+        cashBalance: 100,
+        baselineInvested: 900,
+      }),
+    )
+    await writeFile(join(dir, 'positions.csv'), 'ticker,quantity\nAAPL,1\n')
+    await writeFile(join(dir, 'performance.csv'), 'date,returnPct\n2026-01-01,0\n')
+    await writeFile(
+      join(dir, 'backups', 'settings-2026-06-19T13-02-01-123Z.json'),
+      JSON.stringify({
+        accountName: 'Restored Book',
+        asOfDate: '2026-06-19',
+        periodStart: '2026-01-01',
+        periodEnd: '2026-06-19',
+        accountTotal: 2000,
+        cashBalance: 200,
+        baselineInvested: 1800,
+      }),
+    )
+
+    const result = await restoreLocalBackup(
+      { fileName: 'settings-2026-06-19T13-02-01-123Z.json' },
+      dir,
+    )
+    const restoredSettings = JSON.parse(await readFile(join(dir, 'settings.json'), 'utf8'))
+    const backupFiles = await readdir(join(dir, 'backups'))
+
+    assert.equal(result.restored.targetFileName, 'settings.json')
+    assert.match(result.currentBackupFileName, /^settings-\d{4}-\d{2}-\d{2}T/)
+    assert.equal(restoredSettings.accountName, 'Restored Book')
+    assert.equal(backupFiles.some((fileName) => fileName === result.currentBackupFileName), true)
+  })
+
+  it('rejects invalid backup content without replacing the current file', async () => {
+    const dir = await tempDataDir()
+    await mkdir(join(dir, 'backups'), { recursive: true })
+    await writeFile(join(dir, 'positions.csv'), 'ticker,quantity\nAAPL,1\n')
+    await writeFile(
+      join(dir, 'backups', 'positions-2026-06-19T13-02-01-123Z.csv'),
+      'ticker,quantity\n,not-a-number\n',
+    )
+
+    await assert.rejects(
+      () => restoreLocalBackup({ fileName: 'positions-2026-06-19T13-02-01-123Z.csv' }, dir),
+      (error) => {
+        assert.equal(error.statusCode, 400)
+        assert.equal(error.message, 'Positions validation failed.')
+        assert.deepEqual(error.validationErrors, [
+          'Row 1: ticker is required.',
+          'Row 1: underlying ticker is required.',
+          'Row 1: quantity must be numeric when filled.',
+          'Row 1: enter quantity or fallback market value.',
+        ])
+        return true
+      },
+    )
+
+    assert.equal(await readFile(join(dir, 'positions.csv'), 'utf8'), 'ticker,quantity\nAAPL,1\n')
   })
 })

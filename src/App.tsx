@@ -177,6 +177,27 @@ type ImportPreview = {
   assumptions: string[]
 }
 
+type BackupMetadata = {
+  fileName: string
+  fileType: string
+  targetFileName: string
+  label: string
+  createdAt: string
+  sizeBytes: number
+}
+
+type BackupsResponse = {
+  backups: BackupMetadata[]
+}
+
+type BackupRestoreResponse = {
+  restore: {
+    restored: BackupMetadata
+    currentBackupFileName: string | null
+  }
+  portfolio: PortfolioResponse
+}
+
 function readStoredFlag(key: string) {
   try {
     return globalThis.localStorage?.getItem(key) === 'true'
@@ -273,6 +294,44 @@ async function postReset(mode: ResetMode) {
     throw new Error([payload.error || 'Unable to reset portfolio.', details].filter(Boolean).join('\n'))
   }
   return (await response.json()) as PortfolioResponse
+}
+
+async function fetchBackups() {
+  const response = await fetch('/api/backups')
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
+    throw new Error([payload.error || 'Unable to load backups.', details].filter(Boolean).join('\n'))
+  }
+  return (await response.json()) as BackupsResponse
+}
+
+async function postBackupRestore(fileName: string) {
+  const response = await fetch('/api/backups/restore', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ fileName }),
+  })
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
+    throw new Error([payload.error || 'Unable to restore backup.', details].filter(Boolean).join('\n'))
+  }
+  return (await response.json()) as BackupRestoreResponse
+}
+
+function formatBackupDate(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(date)
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  return `${(bytes / 1024).toFixed(1)} KB`
 }
 
 const emptyPosition = (): Position => ({
@@ -1167,6 +1226,13 @@ function Editor({
   const [resetMode, setResetMode] = useState<ResetMode | null>(null)
   const [resetConfirmation, setResetConfirmation] = useState('')
   const [importOpen, setImportOpen] = useState(false)
+  const [backupsOpen, setBackupsOpen] = useState(false)
+  const [backups, setBackups] = useState<BackupMetadata[]>([])
+  const [backupsLoading, setBackupsLoading] = useState(false)
+  const [backupMessage, setBackupMessage] = useState('')
+  const [restoreBackup, setRestoreBackup] = useState<BackupMetadata | null>(null)
+  const [restoreConfirmation, setRestoreConfirmation] = useState('')
+  const [restoring, setRestoring] = useState(false)
   const [error, setError] = useState('')
 
   function updatePosition(id: string, key: keyof Position, value: string) {
@@ -1201,7 +1267,38 @@ function Editor({
   function openResetConfirmation(mode: ResetMode) {
     setResetMode(mode)
     setResetConfirmation('')
+    setBackupsOpen(false)
+    setRestoreBackup(null)
+    setRestoreConfirmation('')
+    setBackupMessage('')
     setError('')
+  }
+
+  async function loadBackups() {
+    setBackupsLoading(true)
+    setError('')
+    try {
+      const response = await fetchBackups()
+      setBackups(response.backups)
+    } catch (backupError) {
+      setError(backupError instanceof Error ? backupError.message : 'Unable to load backups.')
+    } finally {
+      setBackupsLoading(false)
+    }
+  }
+
+  function toggleBackupsPanel() {
+    setResetMode(null)
+    setResetConfirmation('')
+    setImportOpen(false)
+    setRestoreBackup(null)
+    setRestoreConfirmation('')
+    setBackupMessage('')
+    setBackupsOpen((current) => {
+      const next = !current
+      if (next) void loadBackups()
+      return next
+    })
   }
 
   async function resetData(mode: ResetMode) {
@@ -1221,6 +1318,32 @@ function Editor({
     }
   }
 
+  async function restoreSelectedBackup() {
+    if (!restoreBackup) return
+    setRestoring(true)
+    setError('')
+    setBackupMessage('')
+    try {
+      const response = await postBackupRestore(restoreBackup.fileName)
+      if ('setupRequired' in response.portfolio && response.portfolio.setupRequired) {
+        throw new Error('Restore finished, but local portfolio data is still incomplete.')
+      }
+      setSettings(response.portfolio.settings)
+      setPositions(response.portfolio.positions)
+      onSaved(response.portfolio)
+      setBackupMessage(
+        `${restoreBackup.label} restored. Current ${restoreBackup.targetFileName} was backed up first.`,
+      )
+      setRestoreBackup(null)
+      setRestoreConfirmation('')
+      await loadBackups()
+    } catch (restoreError) {
+      setError(restoreError instanceof Error ? restoreError.message : 'Restore failed.')
+    } finally {
+      setRestoring(false)
+    }
+  }
+
   const resetPhrase = resetMode === 'demo' ? 'RELOAD DEMO' : 'START BLANK'
   const resetTitle = resetMode === 'demo' ? 'Reload demo data' : 'Start with blank files'
   const resetDescription =
@@ -1228,6 +1351,7 @@ function Editor({
       ? 'This replaces your current local portfolio with the fictional demo portfolio.'
       : 'This replaces your current local portfolio with empty starter files.'
   const resetAllowed = resetConfirmation.trim() === resetPhrase
+  const restoreAllowed = restoreConfirmation.trim() === 'RESTORE'
 
   return (
     <div className="editor-backdrop" role="presentation">
@@ -1305,7 +1429,7 @@ function Editor({
             <button
               type="button"
               onClick={() => openResetConfirmation('blank')}
-              disabled={resetting || saving || importOpen}
+              disabled={resetting || saving || importOpen || backupsOpen || restoring}
             >
               <RotateCcw size={15} aria-hidden="true" />
               Start Blank
@@ -1313,7 +1437,7 @@ function Editor({
             <button
               type="button"
               onClick={() => openResetConfirmation('demo')}
-              disabled={resetting || saving || importOpen}
+              disabled={resetting || saving || importOpen || backupsOpen || restoring}
             >
               <RotateCcw size={15} aria-hidden="true" />
               Reload Demo
@@ -1321,13 +1445,116 @@ function Editor({
             <button
               type="button"
               onClick={() => setImportOpen(true)}
-              disabled={resetting || saving || Boolean(resetMode)}
+              disabled={resetting || saving || Boolean(resetMode) || backupsOpen}
             >
               <Upload size={15} aria-hidden="true" />
               Import
             </button>
+            <button
+              type="button"
+              onClick={toggleBackupsPanel}
+              disabled={resetting || saving || importOpen || Boolean(resetMode) || restoring}
+            >
+              <FileSearch size={15} aria-hidden="true" />
+              Backups
+            </button>
           </div>
         </div>
+
+        {backupsOpen ? (
+          <div className="backup-panel" aria-label="Local backups and restore">
+            <div className="backup-panel-heading">
+              <div>
+                <strong>Local backups</strong>
+                <p>
+                  Backups live in data/backups. Restore one file at a time; the current matching file
+                  is backed up before replacement.
+                </p>
+              </div>
+              <button type="button" onClick={() => void loadBackups()} disabled={backupsLoading || restoring}>
+                <RefreshCw size={15} aria-hidden="true" />
+                {backupsLoading ? 'Checking...' : 'Refresh'}
+              </button>
+            </div>
+
+            {backupMessage ? <div className="backup-success">{backupMessage}</div> : null}
+
+            {backupsLoading ? <p className="backup-empty">Checking data/backups...</p> : null}
+
+            {!backupsLoading && backups.length === 0 ? (
+              <p className="backup-empty">No restorable backup files found yet.</p>
+            ) : null}
+
+            {!backupsLoading && backups.length > 0 ? (
+              <div className="backup-list">
+                {backups.map((backup) => (
+                  <div className="backup-row" key={backup.fileName}>
+                    <div>
+                      <span>{backup.label}</span>
+                      <strong>{formatBackupDate(backup.createdAt)}</strong>
+                      <small>
+                        {backup.fileName} - {formatFileSize(backup.sizeBytes)}
+                      </small>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRestoreBackup(backup)
+                        setRestoreConfirmation('')
+                        setBackupMessage('')
+                        setError('')
+                      }}
+                      disabled={restoring}
+                    >
+                      <RotateCcw size={15} aria-hidden="true" />
+                      Restore
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {restoreBackup ? (
+          <div className="reset-confirmation backup-confirmation" role="alertdialog" aria-label="Restore backup">
+            <div>
+              <strong>Restore {restoreBackup.label.toLowerCase()}</strong>
+              <p>
+                This replaces {restoreBackup.targetFileName} with {restoreBackup.fileName}. The current
+                file will be backed up first.
+              </p>
+              <label>
+                Type <b>RESTORE</b> to continue
+                <input
+                  value={restoreConfirmation}
+                  onChange={(event) => setRestoreConfirmation(event.target.value)}
+                  autoFocus
+                />
+              </label>
+            </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => {
+                  setRestoreBackup(null)
+                  setRestoreConfirmation('')
+                }}
+                disabled={restoring}
+              >
+                Cancel
+              </button>
+              <button
+                className="danger-button"
+                type="button"
+                onClick={() => void restoreSelectedBackup()}
+                disabled={!restoreAllowed || restoring}
+              >
+                {restoring ? 'Restoring...' : 'Restore'}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {importOpen ? (
           <div className="editor-import-panel">
