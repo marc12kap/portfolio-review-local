@@ -97,8 +97,9 @@ data/settings.json
 The report intentionally emphasizes percentages. The editor includes account total value because the
 app needs it to calculate position weights and leftover cash.
 
-`data/settings.json` also includes `benchmarkName`, which labels the dashed benchmark line when
-`data/performance.csv` includes benchmark returns. The demo uses `S&P 500`.
+`data/settings.json` also includes `benchmarkName` and `benchmarkTicker`, which label the dashed
+benchmark line when `data/performance.csv` includes benchmark returns. If no ticker is set, the app
+falls back to `SPY` for an S&P 500 benchmark label.
 
 ## CSV Shape
 
@@ -134,8 +135,9 @@ app needs it to calculate position weights and leftover cash.
 | `benchmarkReturnPct` | Optional benchmark cumulative return percentage for that date. |
 
 If `benchmarkReturnPct` is present for more than one row, the performance chart displays a dashed
-benchmark line labeled by `benchmarkName` from `data/settings.json`. If it is missing or blank, the
-chart shows only the portfolio line.
+benchmark line labeled by `benchmarkName` and `benchmarkTicker` from `data/settings.json`. If
+benchmark returns are missing or blank, the chart shows only the portfolio line. `benchmarkTicker`
+defaults to `SPY` when omitted.
 
 ## Prices And Logos
 

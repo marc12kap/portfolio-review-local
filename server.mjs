@@ -92,6 +92,7 @@ function defaultSettings() {
   return {
     accountName: 'Personal Portfolio Book',
     benchmarkName: 'S&P 500',
+    benchmarkTicker: 'SPY',
     asOfDate: todayIso(),
     periodStart: yearStartIso(),
     periodEnd: todayIso(),
@@ -321,6 +322,10 @@ function cleanTicker(value) {
     .toUpperCase()
 }
 
+function cleanBenchmarkTicker(value) {
+  return cleanTicker(value || 'SPY') || 'SPY'
+}
+
 function normalizeLogoTicker(value) {
   return cleanTicker(value).replace(/[^A-Z0-9.-]/g, '')
 }
@@ -504,6 +509,7 @@ async function readSettings() {
   return {
     accountName: settings.accountName || 'Personal Portfolio Book',
     benchmarkName: settings.benchmarkName || 'S&P 500',
+    benchmarkTicker: cleanBenchmarkTicker(settings.benchmarkTicker),
     asOfDate: formatIsoDate(settings.asOfDate),
     periodStart: formatIsoDate(settings.periodStart),
     periodEnd: formatIsoDate(settings.periodEnd),
@@ -858,6 +864,7 @@ async function saveSettings(payload) {
   const next = {
     accountName: payload.accountName || 'Personal Portfolio Book',
     benchmarkName: payload.benchmarkName || 'S&P 500',
+    benchmarkTicker: cleanBenchmarkTicker(payload.benchmarkTicker),
     asOfDate: formatIsoDate(payload.asOfDate),
     periodStart: formatIsoDate(payload.periodStart),
     periodEnd: formatIsoDate(payload.periodEnd),
@@ -886,6 +893,7 @@ async function savePortfolio(payload) {
   const nextSettings = {
     accountName: settings.accountName || 'Personal Portfolio Book',
     benchmarkName: settings.benchmarkName || 'S&P 500',
+    benchmarkTicker: cleanBenchmarkTicker(settings.benchmarkTicker),
     asOfDate: formatIsoDate(settings.asOfDate),
     periodStart: formatIsoDate(settings.periodStart),
     periodEnd: formatIsoDate(settings.periodEnd),
@@ -1026,7 +1034,7 @@ const server = createServer(async (request, response) => {
   }
 })
 
-export { consolidatePositions, inferStructure, validatePositions, validateSettings }
+export { cleanBenchmarkTicker, consolidatePositions, inferStructure, validatePositions, validateSettings }
 
 if (isMainModule) {
   await ensureLocalDataDirectories()
