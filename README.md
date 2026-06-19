@@ -43,6 +43,9 @@ On first run, choose one of:
 - `Start Blank`: create empty local CSV/JSON files.
 - `Import CSV`: initialize from pasted `positions.csv` contents.
 
+After setup, use `Edit Positions` and the `Reset local files` actions to back up your current files
+and either start blank or reload the demo portfolio.
+
 On Windows, `run-local.ps1` runs the same one-command local startup.
 
 ## What The Dashboard Shows
@@ -72,6 +75,7 @@ The repo ships demo data in `demo-data/sample`. Your personal edits stay in `dat
 deliberately share them.
 
 When you save from the in-app editor, the server writes timestamped backups to `data/backups/`.
+Resetting to blank or demo data also creates backups before replacing local files.
 
 ## Privacy Model
 
