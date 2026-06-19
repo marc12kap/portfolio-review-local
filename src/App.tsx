@@ -42,6 +42,8 @@ type Holding = {
   weight: number
   price: number | null
   priceSource: string
+  priceFetchedAt: number | null
+  priceStatus: 'live' | 'fallback' | 'missing'
 }
 
 type Sector = {
@@ -133,7 +135,16 @@ function LogoImage({ holding }: { holding: Holding }) {
   const [failed, setFailed] = useState(false)
 
   if (failed) {
-    return <span className="logo-fallback">{holding.ticker.slice(0, 2)}</span>
+    return (
+      <span
+        className="logo-fallback"
+        role="img"
+        aria-label={`${holding.company} logo unavailable`}
+        title="Logo unavailable; showing ticker initials"
+      >
+        {holding.ticker.slice(0, 2)}
+      </span>
+    )
   }
 
   return (
@@ -144,6 +155,35 @@ function LogoImage({ holding }: { holding: Holding }) {
       loading="lazy"
     />
   )
+}
+
+function formatPriceFetchedAt(value: number | null) {
+  if (!value) return ''
+  return new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
+function priceStatusLabel(holding: Holding) {
+  if (holding.priceStatus === 'live') return 'Live'
+  if (holding.priceStatus === 'fallback') return 'Fallback'
+  return 'Missing'
+}
+
+function priceStatusTitle(holding: Holding) {
+  if (holding.priceStatus === 'live') {
+    return [
+      `Live price from ${holding.priceSource || 'market data source'}.`,
+      holding.priceFetchedAt ? `Fetched ${formatPriceFetchedAt(holding.priceFetchedAt)}.` : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+  }
+  if (holding.priceStatus === 'fallback') {
+    return 'Using the CSV marketValue fallback because a live price was unavailable or quantity was blank.'
+  }
+  return 'No live price or fallback market value is available for this holding.'
 }
 
 function PerformanceChart({ points, finalReturn }: { points: PerformancePoint[]; finalReturn: number }) {
@@ -277,7 +317,15 @@ function HoldingsDetail({
                       <b>{holding.ticker}</b>
                     </span>
                     <span className="structure-cell">{holding.structure}</span>
-                    <strong>{formatWeight(holding.weight)}</strong>
+                    <strong className="weight-cell">
+                      {formatWeight(holding.weight)}
+                      <span
+                        className={`price-status ${holding.priceStatus}`}
+                        title={priceStatusTitle(holding)}
+                      >
+                        {priceStatusLabel(holding)}
+                      </span>
+                    </strong>
                   </div>
                 ))}
               </div>

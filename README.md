@@ -20,6 +20,7 @@ Using Claude Code or another coding agent? See [AGENTS.md](AGENTS.md) for local 
 - Seeds missing local data files from `demo-data/sample` on first run.
 - Fetches live prices from a local Node server when a row has share or contract quantity.
 - Falls back to the CSV `marketValue` column when quantity is blank or prices are unavailable.
+- Shows whether each displayed holding is using a live price, a CSV fallback, or missing price data.
 - Fetches company logos through the local server and caches them in `data/logos`.
 - Saves position edits back into `data/positions.csv` from the in-app editor.
 - Nets option-like rows into the underlying ticker using `quantity * multiplier`, with short rows
@@ -96,7 +97,16 @@ The eye icon reveals private dollar values:
 The browser loads logos from local routes such as `/api/logo/SNDK`. On first request, the server
 tries the `logoUrl` in `data/positions.csv`, then a favicon fallback from the same domain. Successful
 images are saved into ignored local cache files under `data/logos`. The sample logos that ship with
-the repo live in `demo-data/sample/logos`.
+the repo live in `demo-data/sample/logos`. If a logo cannot be found, the report shows ticker
+initials instead of a broken image.
+
+## Prices
+
+The local server first tries live market prices from public quote endpoints and keeps successful
+results in memory for about 10 minutes. Holdings with quantity use live prices when available and
+show a `Live` badge in the report. If a live price is unavailable or a row has no quantity, the app
+uses the row's `marketValue` fallback and shows `Fallback`. Rows without live prices or fallback
+market values show `Missing`.
 
 ## CSV Columns
 

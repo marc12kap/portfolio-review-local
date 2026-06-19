@@ -566,14 +566,18 @@ function consolidatePositions(positions, prices, settings) {
     if (!underlying) continue
 
     const price = prices[underlying]?.price
+    const priceRecord = prices[underlying]
     const quantity = toNumber(position.quantity)
+    const hasQuantity = hasNumericValue(position.quantity) && quantity !== 0
+    const hasFallbackMarketValue = hasNumericValue(position.marketValue)
     const multiplier = toNumber(
       position.multiplier,
       position.assetType === 'stock' || position.assetType === 'cash' ? 1 : 100,
     )
     const sideSign = position.side === 'short' ? -1 : 1
     const marketValue = toNumber(position.marketValue)
-    const computedValue = price && quantity ? sideSign * quantity * multiplier * price : marketValue
+    const usesLivePrice = Boolean(price && hasQuantity)
+    const computedValue = usesLivePrice ? sideSign * quantity * multiplier * price : marketValue
 
     if (!grouped.has(underlying)) {
       grouped.set(underlying, {
@@ -585,7 +589,9 @@ function consolidatePositions(positions, prices, settings) {
         value: 0,
         rows: [],
         price: price || null,
-        priceSource: prices[underlying]?.source || '',
+        priceSource: priceRecord?.source || '',
+        priceFetchedAt: priceRecord?.fetchedAt || null,
+        priceStatus: 'missing',
       })
     }
 
@@ -594,6 +600,11 @@ function consolidatePositions(positions, prices, settings) {
     item.rows.push(position)
     if (!item.logoUrl && position.logoUrl) item.logoUrl = position.logoUrl
     if (!item.structure && position.structure) item.structure = position.structure
+    if (usesLivePrice) {
+      item.priceStatus = 'live'
+    } else if (hasFallbackMarketValue && item.priceStatus !== 'live') {
+      item.priceStatus = 'fallback'
+    }
   }
 
   const rawHoldings = [...grouped.values()].filter((holding) => Math.abs(holding.value) > 0.01)
@@ -616,6 +627,8 @@ function consolidatePositions(positions, prices, settings) {
       weight: accountTotal ? (holding.value / accountTotal) * 100 : 0,
       price: holding.price,
       priceSource: holding.priceSource,
+      priceFetchedAt: holding.priceFetchedAt,
+      priceStatus: holding.priceStatus,
     }))
     .sort((left, right) => right.weight - left.weight)
 
