@@ -715,6 +715,10 @@ function consolidatePositions(positions, prices, settings) {
 
   const cashWeight = accountTotal ? (cashValue / accountTotal) * 100 : 0
   const netInvestedPercent = Math.max(0, 100 - cashWeight)
+  const topFiveConcentration = holdings
+    .slice(0, 5)
+    .reduce((sum, holding) => sum + Math.max(0, holding.weight), 0)
+  const topHoldingWeight = Math.max(0, holdings[0]?.weight || 0)
 
   return {
     holdings,
@@ -728,6 +732,8 @@ function consolidatePositions(positions, prices, settings) {
       netInvestedPercent,
       diversificationSectors: sectors.filter((sector) => sector.name !== 'Cash & Equivalents').length,
       underlyingCount: holdings.length,
+      topFiveConcentration,
+      topHoldingWeight,
       ytdReturnPercent,
     },
   }
