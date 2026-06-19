@@ -266,21 +266,6 @@ a {
   border-bottom: 4px solid #252c38;
 }
 
-.report-header p {
-  margin: 0 0 7px;
-  color: #b48550;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.32em;
-  line-height: 1.2;
-  text-transform: uppercase;
-}
-
-.report-header p span {
-  margin: 0 6px;
-  color: #c3a585;
-}
-
 .report-header h1 {
   margin: 0;
   color: #2f3643;
@@ -296,19 +281,6 @@ a {
   color: #738094;
   font-size: 12px;
   font-weight: 500;
-  line-height: 1.35;
-}
-
-.privacy-note {
-  width: min(620px, 100%);
-  margin-top: 12px;
-  padding: 8px 10px;
-  border: 1px solid #dedbd4;
-  border-radius: 6px;
-  background: #ffffff;
-  color: #697484;
-  font-size: 11px;
-  font-weight: 750;
   line-height: 1.35;
 }
 

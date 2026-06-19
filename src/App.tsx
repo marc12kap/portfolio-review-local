@@ -998,12 +998,8 @@ function App() {
       <main className="portfolio-page">
         <header className="report-header">
           <div>
-            <p>Private Wealth <span>&middot;</span> Portfolio Review</p>
             <h1>{settings.accountName}</h1>
             <h3>Centralized local portfolio book across custodians</h3>
-            <div className="privacy-note">
-              Local files stay on this computer. Live prices and logos may use public market/logo endpoints.
-            </div>
           </div>
           <div className="header-actions">
             <span>As of {settings.asOfLabel}</span>
