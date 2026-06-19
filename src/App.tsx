@@ -150,9 +150,11 @@ const gettingStartedDismissedKey = 'portfolio-review-demo-flow-modal-dismissed'
 
 const aiAgentImportPrompt = `I want you to help seed my local Portfolio Review Local dashboard.
 
-Use only the local files in this project folder. Do not ask for brokerage login credentials, account numbers, passwords, API keys, or any data I do not choose to provide in this chat.
+Use only the local files in this project folder. Do not ask for brokerage login credentials, account numbers, passwords, API keys, or any data I do not choose to provide in this chat. This prompt is meant for Claude Code, Codex, or another AI coding assistant opened in this folder.
 
-First, inspect README.md, AGENTS.md, and AI_AGENT_IMPORT.md so you understand the local data contracts. Then ask me for non-sensitive holdings data such as ticker, company, shares/contracts, side, average cost, current market value if known, sector/theme, option type, strike, expiration, premium, available cash, beginning book value, benchmark, and optional performance history.
+First, inspect README.md, AGENTS.md, and AI_AGENT_IMPORT.md so you understand the local data contracts. Then ask me for non-sensitive holdings data. I may provide a brokerage CSV export, copied table, screenshots or statement snippets, or rough typed notes.
+
+Ask for the helpful details only: ticker, company, shares/contracts, side, average cost, current market value if known, sector/theme, option type, strike, expiration, premium, available cash, beginning book value, benchmark, and optional performance history.
 
 Draft positions CSV using exactly these headers:
 
@@ -980,12 +982,14 @@ function WelcomeGettingStartedModal({
   portfolio,
   showPrivate,
   onEdit,
+  onStartImport,
   onShowPrivate,
   onDismiss,
 }: {
   portfolio: Portfolio
   showPrivate: boolean
   onEdit: () => void
+  onStartImport: () => void
   onShowPrivate: () => void
   onDismiss: () => void
 }) {
@@ -1030,11 +1034,11 @@ function WelcomeGettingStartedModal({
             </button>
           </li>
           <li>
-            <a href="/api/positions.csv" target="_blank" rel="noreferrer">
+            <button type="button" onClick={onStartImport}>
               <b>4</b>
-              <span>Use an AI agent for import</span>
-              <small>Ask an AI agent to preview your holdings as local CSV rows before anything is saved.</small>
-            </a>
+              <span>Use AI-assisted import</span>
+              <small>Copy a prompt for Claude Code, Codex, or another AI assistant, then preview before saving.</small>
+            </button>
           </li>
           <li>
             <button
@@ -1317,7 +1321,7 @@ function AiImportWorkflow({
           <span>AI Agent Import</span>
           <strong>Preview before anything is saved</strong>
           <p>
-            Paste AI-drafted local files, review the warnings, then explicitly confirm the import.
+            Use Claude Code, Codex, or another AI coding assistant to draft local files, then preview them here.
           </p>
         </div>
         {onCancel ? (
@@ -1329,13 +1333,24 @@ function AiImportWorkflow({
 
       <div className="agent-prompt-helper">
         <div>
-          <strong>Ask an AI agent to draft these files</strong>
-          <p>Copy a provider-neutral prompt with the CSV headers, optional settings, and preview-first workflow.</p>
+          <strong>Copy the prompt into your AI coding assistant</strong>
+          <p>
+            Open this folder in Claude Code, Codex, or a similar tool, paste the prompt, then share only the portfolio details you choose.
+          </p>
         </div>
         <button type="button" onClick={() => void copyAgentPrompt()}>
           {promptCopied ? <CheckCircle2 size={15} aria-hidden="true" /> : <Copy size={15} aria-hidden="true" />}
           {promptCopied ? 'Copied' : 'Copy Prompt'}
         </button>
+        <div className="agent-input-hints" aria-label="Helpful data for AI-assisted import">
+          <span>Brokerage CSV or copied table</span>
+          <span>Screenshots or statement snippets</span>
+          <span>Cash, starting value, and benchmark</span>
+          <span>Sectors, themes, and option details</span>
+        </div>
+        <p className="agent-privacy-note">
+          Do not share passwords, account logins, full account numbers, API keys, or anything you do not want in local files.
+        </p>
         <details open={Boolean(promptCopyError)}>
           <summary>{promptCopyError || 'View prompt text'}</summary>
           <textarea readOnly value={aiAgentImportPrompt} aria-label="AI agent import prompt" />
@@ -1431,10 +1446,12 @@ function Editor({
   portfolio,
   onClose,
   onSaved,
+  initialImportOpen = false,
 }: {
   portfolio: Portfolio
   onClose: () => void
   onSaved: (portfolio: Portfolio) => void
+  initialImportOpen?: boolean
 }) {
   const [settings, setSettings] = useState(portfolio.settings)
   const [positions, setPositions] = useState(portfolio.positions)
@@ -1442,7 +1459,7 @@ function Editor({
   const [resetting, setResetting] = useState(false)
   const [resetMode, setResetMode] = useState<ResetMode | null>(null)
   const [resetConfirmation, setResetConfirmation] = useState('')
-  const [importOpen, setImportOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(initialImportOpen)
   const [backupsOpen, setBackupsOpen] = useState(false)
   const [backups, setBackups] = useState<BackupMetadata[]>([])
   const [backupsLoading, setBackupsLoading] = useState(false)
@@ -1663,9 +1680,10 @@ function Editor({
               type="button"
               onClick={() => setImportOpen(true)}
               disabled={resetting || saving || Boolean(resetMode) || backupsOpen}
+              title="Use AI-assisted import or paste CSV rows"
             >
               <Upload size={15} aria-hidden="true" />
-              Import
+              AI / CSV Import
             </button>
             <button
               type="button"
@@ -2234,6 +2252,7 @@ function App() {
   const [yearStartError, setYearStartError] = useState('')
   const [dismissedYearStartKey, setDismissedYearStartKey] = useState('')
   const [showPrivate, setShowPrivate] = useState(false)
+  const [editorStartsWithImport, setEditorStartsWithImport] = useState(false)
   const [gettingStartedDismissed, setGettingStartedDismissed] = useState(() =>
     readStoredFlag(gettingStartedDismissedKey),
   )
@@ -2279,6 +2298,11 @@ function App() {
   function openHealth() {
     setHealthOpen(true)
     void loadHealth()
+  }
+
+  function openEditor(startWithImport = false) {
+    setEditorStartsWithImport(startWithImport)
+    setEditorOpen(true)
   }
 
   async function resetYearStart() {
@@ -2389,7 +2413,7 @@ function App() {
         <button type="button" onClick={openHealth} aria-label="Open app health check" title="App health">
           <Activity size={16} aria-hidden="true" />
         </button>
-        <button type="button" onClick={() => setEditorOpen(true)}>
+        <button type="button" onClick={() => openEditor()}>
           <Edit3 size={15} aria-hidden="true" />
           Edit Positions
         </button>
@@ -2405,12 +2429,12 @@ function App() {
           </div>
         </header>
 
-        {sampleDataActive ? <SampleDataNotice onEdit={() => setEditorOpen(true)} /> : null}
+        {sampleDataActive ? <SampleDataNotice onEdit={() => openEditor()} /> : null}
 
         {showYearStartReview ? (
           <YearStartReviewNotice
             review={portfolio.yearStartReview}
-            onEdit={() => setEditorOpen(true)}
+            onEdit={() => openEditor()}
             onDismiss={() => {
               writeStoredFlag(yearStartDismissedKey, true)
               setDismissedYearStartKey(yearStartDismissedKey)
@@ -2507,10 +2531,10 @@ function App() {
           topHoldingWeight={metrics.topHoldingWeight}
         />
         <OptionsExposureSummary exposures={portfolio.optionExposures} />
-        {!hasHoldings ? <EmptyPortfolioState onEdit={() => setEditorOpen(true)} /> : null}
+        {!hasHoldings ? <EmptyPortfolioState onEdit={() => openEditor()} /> : null}
         <PriceIssuePanel
           issues={portfolio.priceIssues}
-          onEdit={() => setEditorOpen(true)}
+          onEdit={() => openEditor()}
         />
         <HoldingsDetail
           sectors={portfolio.sectors}
@@ -2523,7 +2547,11 @@ function App() {
       {editorOpen ? (
         <Editor
           portfolio={portfolio}
-          onClose={() => setEditorOpen(false)}
+          initialImportOpen={editorStartsWithImport}
+          onClose={() => {
+            setEditorOpen(false)
+            setEditorStartsWithImport(false)
+          }}
           onSaved={(nextPortfolio) => acceptPortfolio(nextPortfolio)}
         />
       ) : null}
@@ -2531,7 +2559,8 @@ function App() {
         <WelcomeGettingStartedModal
           portfolio={portfolio}
           showPrivate={showPrivate}
-          onEdit={() => setEditorOpen(true)}
+          onEdit={() => openEditor()}
+          onStartImport={() => openEditor(true)}
           onShowPrivate={() => setShowPrivate(true)}
           onDismiss={() => {
             writeStoredFlag(gettingStartedDismissedKey, true)
