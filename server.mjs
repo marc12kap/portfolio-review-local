@@ -283,7 +283,7 @@ function toCsv(rows) {
 
 function toNumber(value, fallback = 0) {
   if (value === null || value === undefined || value === '') return fallback
-  const numeric = Number(String(value).replace(/[$,%\s]/g, ''))
+  const numeric = Number(String(value).replace(/[$,%\s,]/g, ''))
   return Number.isFinite(numeric) ? numeric : fallback
 }
 
@@ -293,7 +293,22 @@ function roundCurrency(value) {
 
 function hasNumericValue(value) {
   if (value === null || value === undefined || value === '') return false
-  return Number.isFinite(Number(String(value).replace(/[$,%\s]/g, '')))
+  return Number.isFinite(Number(String(value).replace(/[$,%\s,]/g, '')))
+}
+
+function normalizeNumericValue(value) {
+  if (!hasNumericValue(value)) return ''
+  return String(toNumber(value))
+}
+
+function normalizePositionForSave(position) {
+  const numericFields = ['quantity', 'averageCost', 'multiplier', 'marketValue', 'strikePrice', 'premium']
+  return {
+    ...position,
+    ...Object.fromEntries(
+      numericFields.map((field) => [field, normalizeNumericValue(position?.[field])]),
+    ),
+  }
 }
 
 function isValidIsoDate(value) {
@@ -910,7 +925,7 @@ async function savePositions(positions) {
   await ensureLocalDataDirectories()
   validatePositions(positions)
   await backupLocalDataFile('positions.csv')
-  const rows = Array.isArray(positions) ? positions : []
+  const rows = Array.isArray(positions) ? positions.map(normalizePositionForSave) : []
   await writeFile(join(dataDir, 'positions.csv'), `${toCsv(rows)}\n`)
 }
 
@@ -935,7 +950,7 @@ async function savePortfolio(payload) {
   }
   await Promise.all([
     writeFile(join(dataDir, 'settings.json'), `${JSON.stringify(nextSettings, null, 2)}\n`),
-    writeFile(join(dataDir, 'positions.csv'), `${toCsv(positions)}\n`),
+    writeFile(join(dataDir, 'positions.csv'), `${toCsv(positions.map(normalizePositionForSave))}\n`),
   ])
 }
 
