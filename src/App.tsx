@@ -432,6 +432,46 @@ function OptionsExposureSummary({ exposures }: { exposures: OptionExposure[] }) 
   )
 }
 
+function AllocationSnapshot({
+  holdings,
+  sectors,
+  cashWeight,
+  topFiveConcentration,
+}: {
+  holdings: Holding[]
+  sectors: Sector[]
+  cashWeight: number
+  topFiveConcentration: number
+}) {
+  const topHolding = holdings[0]
+  const topSector = sectors.find((sector) => sector.name !== 'Cash & Equivalents')
+
+  return (
+    <section className="allocation-snapshot" aria-label="Allocation snapshot">
+      <div>
+        <span>Top Theme</span>
+        <strong>{topSector ? topSector.name : 'No holdings'}</strong>
+        <small>{topSector ? formatWeight(topSector.weight) : '0.0%'}</small>
+      </div>
+      <div>
+        <span>Top Holding</span>
+        <strong>{topHolding ? topHolding.ticker : '-'}</strong>
+        <small>{topHolding ? formatWeight(topHolding.weight) : '0.0%'}</small>
+      </div>
+      <div>
+        <span>Top 5 Holdings</span>
+        <strong>{formatWeight(topFiveConcentration)}</strong>
+        <small>Combined weight</small>
+      </div>
+      <div>
+        <span>Cash Bucket</span>
+        <strong>{formatWeight(cashWeight)}</strong>
+        <small>Uninvested allocation</small>
+      </div>
+    </section>
+  )
+}
+
 function HoldingsDetail({
   sectors,
   holdings,
@@ -1015,6 +1055,13 @@ function App() {
             </div>
           </section>
         ) : null}
+
+        <AllocationSnapshot
+          holdings={portfolio.holdings}
+          sectors={portfolio.sectors}
+          cashWeight={metrics.cashWeight}
+          topFiveConcentration={metrics.topFiveConcentration}
+        />
 
         <section className="report-section performance-section">
           <div className="section-heading">
