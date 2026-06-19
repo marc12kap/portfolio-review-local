@@ -950,7 +950,7 @@ function Editor({
               readOnly
               disabled
             />
-            <small>Uses today for current holdings. Add performance CSV rows for history.</small>
+            <small>Uses today's Eastern Time date. Add performance CSV rows for history.</small>
           </label>
           <NumberField
             label="Available cash"

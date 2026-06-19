@@ -7,6 +7,7 @@ import {
   cleanBenchmarkTicker,
   consolidatePositions,
   inferStructure,
+  isoDateInTimeZone,
   migrateLocalDataFiles,
   normalizePerformanceForReport,
   normalizeReportingDates,
@@ -441,6 +442,11 @@ describe('benchmark settings', () => {
 })
 
 describe('reporting date defaults', () => {
+  it('uses the Eastern Time calendar date instead of UTC for late-night reports', () => {
+    const utcRolloverBeforeEasternMidnight = new Date('2026-07-04T03:30:00.000Z')
+    assert.equal(isoDateInTimeZone(utcRolloverBeforeEasternMidnight), '2026-07-03')
+  })
+
   it('uses today for current report dates even when saved dates are stale', () => {
     assert.deepEqual(
       normalizeReportingDates(

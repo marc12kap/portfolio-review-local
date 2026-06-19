@@ -79,8 +79,9 @@ The expected first-time workflow is:
 6. Confirm available cash, beginning book value, optional performance history, and price badges
    before they rely on the report.
 
-The report should be treated as a current portfolio snapshot through today. Do not imply the app can
-reconstruct arbitrary historical holdings unless the user provides and maintains performance data.
+The report should be treated as a current portfolio snapshot through today's Eastern Time date. Do
+not imply the app can reconstruct arbitrary historical holdings unless the user provides and
+maintains performance data.
 
 If the user asks for AI-assisted seeding, follow `AI_AGENT_IMPORT.md`. Ask them to paste or attach
 non-sensitive holdings data such as ticker, company, shares/contracts, average cost, market value if
