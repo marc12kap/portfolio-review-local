@@ -85,6 +85,34 @@ describe('consolidatePositions', () => {
     assert.equal(byTicker(result, 'ABC').priceStatus, 'live')
   })
 
+  it('calculates current book value from invested value plus cash balance', () => {
+    const result = consolidatePositions(
+      [position({ quantity: '10' })],
+      prices,
+      settings({ accountTotal: 10_000, cashBalance: 300, baselineInvested: 400 }),
+    )
+
+    assert.equal(result.metrics.investedValue, 200)
+    assert.equal(result.metrics.cashValue, 300)
+    assert.equal(result.metrics.accountTotal, 500)
+    assert.equal(result.metrics.cashWeight, 60)
+    assert.equal(result.metrics.ytdReturnPercent, 25)
+    assert.equal(byTicker(result, 'ABC').weight, 40)
+  })
+
+  it('preserves legacy account total behavior when cash balance is missing', () => {
+    const result = consolidatePositions(
+      [position({ quantity: '10' })],
+      prices,
+      settings({ accountTotal: 1_000, baselineInvested: 1_000 }),
+    )
+
+    assert.equal(result.metrics.investedValue, 200)
+    assert.equal(result.metrics.cashValue, 800)
+    assert.equal(result.metrics.accountTotal, 1_000)
+    assert.equal(byTicker(result, 'ABC').weight, 20)
+  })
+
   it('applies default option multipliers for long call exposure', () => {
     const result = consolidatePositions(
       [
@@ -272,6 +300,7 @@ describe('validation', () => {
     assert.doesNotThrow(() =>
       validateSettings({
         accountTotal: 10_000,
+        cashBalance: 2_000,
         baselineInvested: 8_000,
         asOfDate: '2026-06-18',
         periodStart: '2026-01-01',
@@ -315,6 +344,7 @@ describe('validation', () => {
       () =>
         validateSettings({
           accountTotal: 'many',
+          cashBalance: 'some',
           baselineInvested: '',
           asOfDate: 'June 18',
           periodStart: '2026-01-01',
@@ -324,6 +354,7 @@ describe('validation', () => {
         assert.equal(error.statusCode, 400)
         assert.deepEqual(error.validationErrors, [
           'Current book value must be a number.',
+          'Available cash must be a number.',
           'Beginning book value must be a number.',
           'As-of date must be a YYYY-MM-DD date.',
         ])

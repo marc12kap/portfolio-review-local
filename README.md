@@ -94,8 +94,12 @@ data/positions.csv
 data/settings.json
 ```
 
-The report intentionally emphasizes percentages. The editor includes account total value because the
-app needs it to calculate position weights and leftover cash.
+The report intentionally emphasizes percentages. The editor asks for available cash; the app
+calculates current book value from live/fallback holdings value plus that cash balance.
+
+`data/settings.json` includes `cashBalance` for available cash. Older local files that only include
+`accountTotal` still work; the app derives cash from legacy book value minus invested value until the
+settings are saved again.
 
 `data/settings.json` also includes `benchmarkName` and `benchmarkTicker`, which label the dashed
 benchmark line when `data/performance.csv` includes benchmark returns. If no ticker is set, the app
