@@ -12,6 +12,7 @@
     "check": "npm run lint && npm run typecheck && npm test && npm run build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "release:zip": "node scripts/build-release.mjs",
     "start": "node server.mjs",
     "test": "node --test",
     "typecheck": "tsc --noEmit"
