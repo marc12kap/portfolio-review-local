@@ -935,6 +935,36 @@ function previewPortfolioImport(payload = {}) {
   }
 }
 
+async function writeImportedPortfolioData(payload = {}) {
+  const preview = previewPortfolioImport(payload)
+  if (!preview.ok) {
+    throw validationError('Import validation failed.', preview.validationErrors)
+  }
+
+  const positions = parseCsv(String(payload.positionsCsv || ''))
+  const rawSettings = parseOptionalJsonInput(payload.settings ?? payload.settingsJson, 'settings')
+  const settings = previewSettings(rawSettings)
+  const performance = parsePerformancePreview(payload.performanceCsv)
+
+  await ensureLocalDataDirectories()
+  await backupLocalDataFiles()
+  await writeBlankDataFiles()
+  await writeFile(join(dataDir, 'positions.csv'), `${toCsv(positions)}\n`)
+
+  if (Object.keys(rawSettings).length) {
+    await writeFile(join(dataDir, 'settings.json'), `${JSON.stringify(settings, null, 2)}\n`)
+  }
+
+  if (performance.length) {
+    await writeFile(
+      join(dataDir, 'performance.csv'),
+      `${toCsvWithHeaders(performance, ['date', 'returnPct', 'benchmarkReturnPct'])}\n`,
+    )
+  }
+
+  await writePortfolioSource('user')
+}
+
 function logoContentTypeForExtension(extension) {
   return mimeTypes[extension] || 'application/octet-stream'
 }
@@ -1579,6 +1609,13 @@ const server = createServer(async (request, response) => {
     if (url.pathname === '/api/import/preview' && request.method === 'POST') {
       const body = await readBody(request)
       sendJson(response, 200, previewPortfolioImport(body))
+      return
+    }
+
+    if (url.pathname === '/api/import/commit' && request.method === 'POST') {
+      const body = await readBody(request)
+      await writeImportedPortfolioData(body)
+      sendJson(response, 200, await buildPortfolio())
       return
     }
 

@@ -1,5 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Edit3, Eye, EyeOff, Plus, RefreshCw, RotateCcw, Save, Trash2, X } from 'lucide-react'
+import {
+  Edit3,
+  Eye,
+  EyeOff,
+  FileSearch,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Trash2,
+  Upload,
+  X,
+} from 'lucide-react'
 
 type Settings = {
   accountName: string
@@ -125,6 +137,46 @@ type ApiErrorPayload = {
 type ResetMode = 'demo' | 'blank'
 const gettingStartedDismissedKey = 'portfolio-review-demo-flow-modal-dismissed'
 
+type ImportReviewRow = {
+  rowNumber: number
+  ticker: string
+  underlying?: string
+  company?: string
+  message?: string
+  missing?: string[]
+}
+
+type ImportPreview = {
+  ok: boolean
+  validationErrors: string[]
+  positions: {
+    rowCount: number
+    assetTypeCounts: Record<string, number>
+    missingSectorRows: ImportReviewRow[]
+    missingValueRows: ImportReviewRow[]
+    priceReviewRows: ImportReviewRow[]
+    optionDetailGaps: ImportReviewRow[]
+    tickerReviewRows: ImportReviewRow[]
+  }
+  settings: {
+    accountName: string
+    benchmarkName: string
+    benchmarkTicker: string
+    asOfDate: string
+    periodStart: string
+    periodEnd: string
+    cashBalance: number
+    baselineInvested: number
+  }
+  performance: {
+    rowCount: number
+    hasBenchmarkReturns: boolean
+    startDate: string
+    endDate: string
+  }
+  assumptions: string[]
+}
+
 function readStoredFlag(key: string) {
   try {
     return globalThis.localStorage?.getItem(key) === 'true'
@@ -169,6 +221,42 @@ async function postSetup(mode: 'demo' | 'blank' | 'import', positionsCsv = '') {
     const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
     const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
     throw new Error([payload.error || 'Unable to set up portfolio.', details].filter(Boolean).join('\n'))
+  }
+  return (await response.json()) as PortfolioResponse
+}
+
+async function postImportPreview(payload: {
+  positionsCsv: string
+  settingsJson?: string
+  performanceCsv?: string
+}) {
+  const response = await fetch('/api/import/preview', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = errorPayload.validationErrors?.length ? errorPayload.validationErrors.join('\n') : ''
+    throw new Error([errorPayload.error || 'Unable to preview import.', details].filter(Boolean).join('\n'))
+  }
+  return (await response.json()) as ImportPreview
+}
+
+async function postImportCommit(payload: {
+  positionsCsv: string
+  settingsJson?: string
+  performanceCsv?: string
+}) {
+  const response = await fetch('/api/import/commit', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!response.ok) {
+    const errorPayload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = errorPayload.validationErrors?.length ? errorPayload.validationErrors.join('\n') : ''
+    throw new Error([errorPayload.error || 'Unable to import portfolio.', details].filter(Boolean).join('\n'))
   }
   return (await response.json()) as PortfolioResponse
 }
@@ -827,6 +915,242 @@ function SampleDataNotice({ onEdit }: { onEdit: () => void }) {
   )
 }
 
+function assetTypeSummary(counts: Record<string, number>) {
+  const entries = Object.entries(counts)
+  if (!entries.length) return 'No rows found'
+  return entries.map(([type, count]) => `${count} ${type}`).join(' · ')
+}
+
+function ImportIssueList({ title, rows }: { title: string; rows: ImportReviewRow[] }) {
+  if (!rows.length) return null
+
+  return (
+    <div className="import-issue-list">
+      <strong>{title}</strong>
+      <ul>
+        {rows.slice(0, 5).map((row) => (
+          <li key={`${title}-${row.rowNumber}-${row.ticker || row.underlying}`}>
+            Row {row.rowNumber}: {row.ticker || row.underlying || row.company || 'missing ticker'}
+            {row.missing?.length ? ` needs ${row.missing.join(', ')}` : ''}
+            {row.message ? ` - ${row.message}` : ''}
+          </li>
+        ))}
+      </ul>
+      {rows.length > 5 ? <small>{rows.length - 5} more rows need review.</small> : null}
+    </div>
+  )
+}
+
+function ImportPreviewSummary({ preview }: { preview: ImportPreview }) {
+  return (
+    <section className={`import-preview ${preview.ok ? 'is-ready' : 'needs-review'}`} aria-live="polite">
+      <div className="import-preview-heading">
+        <span>{preview.ok ? 'Ready To Import' : 'Needs Review'}</span>
+        <strong>{preview.positions.rowCount} position rows</strong>
+        <p>{assetTypeSummary(preview.positions.assetTypeCounts)}</p>
+      </div>
+
+      <div className="import-preview-grid">
+        <div>
+          <span>Benchmark</span>
+          <strong>{preview.settings.benchmarkTicker || 'SPY'}</strong>
+          <small>{preview.settings.benchmarkName}</small>
+        </div>
+        <div>
+          <span>Cash</span>
+          <strong>{formatCurrency(preview.settings.cashBalance)}</strong>
+          <small>Available cash</small>
+        </div>
+        <div>
+          <span>Beginning Value</span>
+          <strong>{formatCurrency(preview.settings.baselineInvested)}</strong>
+          <small>YTD return base</small>
+        </div>
+        <div>
+          <span>Performance</span>
+          <strong>{preview.performance.rowCount}</strong>
+          <small>{preview.performance.hasBenchmarkReturns ? 'Includes benchmark' : 'Portfolio only'}</small>
+        </div>
+      </div>
+
+      {preview.validationErrors.length ? (
+        <div className="import-errors" role="alert">
+          {preview.validationErrors.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      ) : null}
+
+      <ImportIssueList title="Missing sectors" rows={preview.positions.missingSectorRows} />
+      <ImportIssueList title="Missing quantity or fallback value" rows={preview.positions.missingValueRows} />
+      <ImportIssueList title="Live price review" rows={preview.positions.priceReviewRows} />
+      <ImportIssueList title="Option details" rows={preview.positions.optionDetailGaps} />
+      <ImportIssueList title="Ticker and logo review" rows={preview.positions.tickerReviewRows} />
+
+      {preview.assumptions.length ? (
+        <div className="import-assumptions">
+          <strong>Assumptions</strong>
+          {preview.assumptions.map((assumption) => (
+            <p key={assumption}>{assumption}</p>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
+function AiImportWorkflow({
+  onImported,
+  onCancel,
+  compact = false,
+}: {
+  onImported: (portfolio: Portfolio) => void
+  onCancel?: () => void
+  compact?: boolean
+}) {
+  const [positionsCsv, setPositionsCsv] = useState('')
+  const [settingsJson, setSettingsJson] = useState('')
+  const [performanceCsv, setPerformanceCsv] = useState('')
+  const [preview, setPreview] = useState<ImportPreview | null>(null)
+  const [confirmed, setConfirmed] = useState(false)
+  const [working, setWorking] = useState(false)
+  const [error, setError] = useState('')
+
+  const payload = { positionsCsv, settingsJson, performanceCsv }
+
+  async function previewImport() {
+    setWorking(true)
+    setError('')
+    setConfirmed(false)
+    try {
+      setPreview(await postImportPreview(payload))
+    } catch (previewError) {
+      setPreview(null)
+      setError(previewError instanceof Error ? previewError.message : 'Preview failed.')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  async function commitImport() {
+    if (!preview?.ok || !confirmed) return
+    setWorking(true)
+    setError('')
+    try {
+      const response = await postImportCommit(payload)
+      if ('setupRequired' in response && response.setupRequired) {
+        throw new Error('Import did not finish. Try again or check local file permissions.')
+      }
+      onImported(response)
+    } catch (commitError) {
+      setError(commitError instanceof Error ? commitError.message : 'Import failed.')
+    } finally {
+      setWorking(false)
+    }
+  }
+
+  return (
+    <section className={`ai-import-workflow ${compact ? 'is-compact' : ''}`} aria-label="AI import preview">
+      <div className="ai-import-heading">
+        <div>
+          <span>AI Agent Import</span>
+          <strong>Preview before anything is saved</strong>
+          <p>
+            Paste AI-drafted local files, review the warnings, then explicitly confirm the import.
+          </p>
+        </div>
+        {onCancel ? (
+          <button type="button" onClick={onCancel} disabled={working} aria-label="Close import workflow">
+            <X size={16} aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
+
+      <label>
+        Positions CSV
+        <textarea
+          value={positionsCsv}
+          onChange={(event) => {
+            setPositionsCsv(event.target.value)
+            setPreview(null)
+            setConfirmed(false)
+          }}
+          placeholder={`ticker,company,underlying,assetType,side,quantity,averageCost,marketValue,sector
+AAPL,Apple Inc.,AAPL,stock,long,25,180,,Mega-Cap Technology`}
+        />
+      </label>
+
+      <div className="ai-import-optional-grid">
+        <label>
+          Settings JSON
+          <textarea
+            value={settingsJson}
+            onChange={(event) => {
+              setSettingsJson(event.target.value)
+              setPreview(null)
+              setConfirmed(false)
+            }}
+            placeholder={`{
+  "accountName": "My Portfolio",
+  "benchmarkTicker": "SPY",
+  "cashBalance": 25000,
+  "baselineInvested": 500000
+}`}
+          />
+        </label>
+        <label>
+          Performance CSV
+          <textarea
+            value={performanceCsv}
+            onChange={(event) => {
+              setPerformanceCsv(event.target.value)
+              setPreview(null)
+              setConfirmed(false)
+            }}
+            placeholder={`date,returnPct,benchmarkReturnPct
+2026-01-01,0,0
+2026-03-31,4.2,3.8`}
+          />
+        </label>
+      </div>
+
+      <div className="ai-import-actions">
+        <button type="button" onClick={() => void previewImport()} disabled={working || !positionsCsv.trim()}>
+          <FileSearch size={15} aria-hidden="true" />
+          {working && !preview ? 'Previewing...' : 'Preview Import'}
+        </button>
+      </div>
+
+      {preview ? <ImportPreviewSummary preview={preview} /> : null}
+
+      {preview?.ok ? (
+        <div className="import-confirmation">
+          <label>
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(event) => setConfirmed(event.target.checked)}
+            />
+            Replace the current local files with this import after backups are created.
+          </label>
+          <button type="button" onClick={() => void commitImport()} disabled={!confirmed || working}>
+            <Upload size={15} aria-hidden="true" />
+            {working ? 'Importing...' : 'Confirm Import'}
+          </button>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="editor-error import-workflow-error" role="alert">
+          {error.split('\n').map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  )
+}
+
 function Editor({
   portfolio,
   onClose,
@@ -842,6 +1166,7 @@ function Editor({
   const [resetting, setResetting] = useState(false)
   const [resetMode, setResetMode] = useState<ResetMode | null>(null)
   const [resetConfirmation, setResetConfirmation] = useState('')
+  const [importOpen, setImportOpen] = useState(false)
   const [error, setError] = useState('')
 
   function updatePosition(id: string, key: keyof Position, value: string) {
@@ -977,16 +1302,45 @@ function Editor({
             </p>
           </div>
           <div>
-            <button type="button" onClick={() => openResetConfirmation('blank')} disabled={resetting || saving}>
+            <button
+              type="button"
+              onClick={() => openResetConfirmation('blank')}
+              disabled={resetting || saving || importOpen}
+            >
               <RotateCcw size={15} aria-hidden="true" />
               Start Blank
             </button>
-            <button type="button" onClick={() => openResetConfirmation('demo')} disabled={resetting || saving}>
+            <button
+              type="button"
+              onClick={() => openResetConfirmation('demo')}
+              disabled={resetting || saving || importOpen}
+            >
               <RotateCcw size={15} aria-hidden="true" />
               Reload Demo
             </button>
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              disabled={resetting || saving || Boolean(resetMode)}
+            >
+              <Upload size={15} aria-hidden="true" />
+              Import
+            </button>
           </div>
         </div>
+
+        {importOpen ? (
+          <div className="editor-import-panel">
+            <AiImportWorkflow
+              compact
+              onCancel={() => setImportOpen(false)}
+              onImported={(nextPortfolio) => {
+                onSaved(nextPortfolio)
+                onClose()
+              }}
+            />
+          </div>
+        ) : null}
 
         {resetMode ? (
           <div className="reset-confirmation" role="alertdialog" aria-label={resetTitle}>
@@ -1028,164 +1382,168 @@ function Editor({
           </div>
         ) : null}
 
-        <div className="positions-editor">
-          <div className="editor-toolbar">
-            <a href="/api/positions.csv" target="_blank" rel="noreferrer">
-              Open CSV
-            </a>
-            <button type="button" onClick={() => setPositions([...positions, emptyPosition()])}>
-              <Plus size={15} aria-hidden="true" />
-              Add Row
-            </button>
-          </div>
-          <p className="editor-note">
-            Enter shares for stock rows and contracts for option rows. Money fields accept commas
-            and dollar signs; saved CSV values stay numeric.
-          </p>
-          <div className="editable-table">
-            <div className="editable-row editable-head">
-              <span>Ticker</span>
-              <span>Shares / contracts</span>
-              <span>Avg cost</span>
-              <span>Fallback value</span>
-              <span>Type</span>
-              <span>Side</span>
-              <span>Opt</span>
-              <span>Strike</span>
-              <span>Multiplier</span>
-              <span>Expiry</span>
-              <span>Premium</span>
-              <span>Sector</span>
-              <span>Structure</span>
-              <span />
-            </div>
-            {positions.map((position) => (
-              <div className="editable-row" key={position.id}>
-                <input
-                  value={position.ticker}
-                  onChange={(event) => updatePosition(position.id, 'ticker', event.target.value)}
-                  aria-label="Ticker"
-                />
-                <input
-                  className="quantity-input"
-                  value={position.quantity}
-                  onChange={(event) => updatePosition(position.id, 'quantity', event.target.value)}
-                  aria-label="Shares or contracts"
-                  inputMode="decimal"
-                  placeholder={position.assetType === 'stock' ? 'shares' : 'contracts'}
-                />
-                <input
-                  className="money-input"
-                  value={position.averageCost}
-                  onChange={(event) => updatePosition(position.id, 'averageCost', event.target.value)}
-                  aria-label="Average cost"
-                  inputMode="decimal"
-                  placeholder="$ / unit"
-                />
-                <input
-                  className="money-input"
-                  value={position.marketValue}
-                  onChange={(event) => updatePosition(position.id, 'marketValue', event.target.value)}
-                  aria-label="Fallback market value"
-                  inputMode="decimal"
-                  placeholder="$ total"
-                />
-                <select
-                  value={position.assetType}
-                  onChange={(event) => updatePosition(position.id, 'assetType', event.target.value)}
-                  aria-label="Asset type"
-                >
-                  <option value="stock">Stock</option>
-                  <option value="option">Option</option>
-                  <option value="spread">Spread</option>
-                </select>
-                <select
-                  value={position.side}
-                  onChange={(event) => updatePosition(position.id, 'side', event.target.value)}
-                  aria-label="Side"
-                >
-                  <option value="long">Long</option>
-                  <option value="short">Short</option>
-                </select>
-                <select
-                  value={position.optionType}
-                  onChange={(event) => updatePosition(position.id, 'optionType', event.target.value)}
-                  aria-label="Option type"
-                >
-                  <option value="">-</option>
-                  <option value="call">Call</option>
-                  <option value="put">Put</option>
-                </select>
-                <input
-                  className="money-input"
-                  value={position.strikePrice}
-                  onChange={(event) => updatePosition(position.id, 'strikePrice', event.target.value)}
-                  aria-label="Strike price"
-                  inputMode="decimal"
-                  placeholder="$ strike"
-                />
-                <input
-                  className="quantity-input"
-                  value={position.multiplier}
-                  onChange={(event) => updatePosition(position.id, 'multiplier', event.target.value)}
-                  aria-label="Contract multiplier"
-                  inputMode="decimal"
-                  placeholder="100"
-                />
-                <input
-                  type="date"
-                  value={position.expiryDate}
-                  onChange={(event) => updatePosition(position.id, 'expiryDate', event.target.value)}
-                  aria-label="Expiry date"
-                />
-                <input
-                  className="money-input"
-                  value={position.premium}
-                  onChange={(event) => updatePosition(position.id, 'premium', event.target.value)}
-                  aria-label="Premium"
-                  inputMode="decimal"
-                  placeholder="$"
-                />
-                <input
-                  value={position.sector}
-                  onChange={(event) => updatePosition(position.id, 'sector', event.target.value)}
-                  aria-label="Sector"
-                />
-                <input
-                  value={position.structure}
-                  onChange={(event) => updatePosition(position.id, 'structure', event.target.value)}
-                  aria-label="Structure"
-                />
-                <button
-                  type="button"
-                  aria-label={`Remove ${position.ticker || 'row'}`}
-                  onClick={() =>
-                    setPositions((current) => current.filter((row) => row.id !== position.id))
-                  }
-                >
-                  <Trash2 size={15} aria-hidden="true" />
+        {!importOpen ? (
+          <>
+            <div className="positions-editor">
+              <div className="editor-toolbar">
+                <a href="/api/positions.csv" target="_blank" rel="noreferrer">
+                  Open CSV
+                </a>
+                <button type="button" onClick={() => setPositions([...positions, emptyPosition()])}>
+                  <Plus size={15} aria-hidden="true" />
+                  Add Row
                 </button>
               </div>
-            ))}
-          </div>
-        </div>
+              <p className="editor-note">
+                Enter shares for stock rows and contracts for option rows. Money fields accept commas
+                and dollar signs; saved CSV values stay numeric.
+              </p>
+              <div className="editable-table">
+                <div className="editable-row editable-head">
+                  <span>Ticker</span>
+                  <span>Shares / contracts</span>
+                  <span>Avg cost</span>
+                  <span>Fallback value</span>
+                  <span>Type</span>
+                  <span>Side</span>
+                  <span>Opt</span>
+                  <span>Strike</span>
+                  <span>Multiplier</span>
+                  <span>Expiry</span>
+                  <span>Premium</span>
+                  <span>Sector</span>
+                  <span>Structure</span>
+                  <span />
+                </div>
+                {positions.map((position) => (
+                  <div className="editable-row" key={position.id}>
+                    <input
+                      value={position.ticker}
+                      onChange={(event) => updatePosition(position.id, 'ticker', event.target.value)}
+                      aria-label="Ticker"
+                    />
+                    <input
+                      className="quantity-input"
+                      value={position.quantity}
+                      onChange={(event) => updatePosition(position.id, 'quantity', event.target.value)}
+                      aria-label="Shares or contracts"
+                      inputMode="decimal"
+                      placeholder={position.assetType === 'stock' ? 'shares' : 'contracts'}
+                    />
+                    <input
+                      className="money-input"
+                      value={position.averageCost}
+                      onChange={(event) => updatePosition(position.id, 'averageCost', event.target.value)}
+                      aria-label="Average cost"
+                      inputMode="decimal"
+                      placeholder="$ / unit"
+                    />
+                    <input
+                      className="money-input"
+                      value={position.marketValue}
+                      onChange={(event) => updatePosition(position.id, 'marketValue', event.target.value)}
+                      aria-label="Fallback market value"
+                      inputMode="decimal"
+                      placeholder="$ total"
+                    />
+                    <select
+                      value={position.assetType}
+                      onChange={(event) => updatePosition(position.id, 'assetType', event.target.value)}
+                      aria-label="Asset type"
+                    >
+                      <option value="stock">Stock</option>
+                      <option value="option">Option</option>
+                      <option value="spread">Spread</option>
+                    </select>
+                    <select
+                      value={position.side}
+                      onChange={(event) => updatePosition(position.id, 'side', event.target.value)}
+                      aria-label="Side"
+                    >
+                      <option value="long">Long</option>
+                      <option value="short">Short</option>
+                    </select>
+                    <select
+                      value={position.optionType}
+                      onChange={(event) => updatePosition(position.id, 'optionType', event.target.value)}
+                      aria-label="Option type"
+                    >
+                      <option value="">-</option>
+                      <option value="call">Call</option>
+                      <option value="put">Put</option>
+                    </select>
+                    <input
+                      className="money-input"
+                      value={position.strikePrice}
+                      onChange={(event) => updatePosition(position.id, 'strikePrice', event.target.value)}
+                      aria-label="Strike price"
+                      inputMode="decimal"
+                      placeholder="$ strike"
+                    />
+                    <input
+                      className="quantity-input"
+                      value={position.multiplier}
+                      onChange={(event) => updatePosition(position.id, 'multiplier', event.target.value)}
+                      aria-label="Contract multiplier"
+                      inputMode="decimal"
+                      placeholder="100"
+                    />
+                    <input
+                      type="date"
+                      value={position.expiryDate}
+                      onChange={(event) => updatePosition(position.id, 'expiryDate', event.target.value)}
+                      aria-label="Expiry date"
+                    />
+                    <input
+                      className="money-input"
+                      value={position.premium}
+                      onChange={(event) => updatePosition(position.id, 'premium', event.target.value)}
+                      aria-label="Premium"
+                      inputMode="decimal"
+                      placeholder="$"
+                    />
+                    <input
+                      value={position.sector}
+                      onChange={(event) => updatePosition(position.id, 'sector', event.target.value)}
+                      aria-label="Sector"
+                    />
+                    <input
+                      value={position.structure}
+                      onChange={(event) => updatePosition(position.id, 'structure', event.target.value)}
+                      aria-label="Structure"
+                    />
+                    <button
+                      type="button"
+                      aria-label={`Remove ${position.ticker || 'row'}`}
+                      onClick={() =>
+                        setPositions((current) => current.filter((row) => row.id !== position.id))
+                      }
+                    >
+                      <Trash2 size={15} aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
 
-        {error ? (
-          <div className="editor-error" role="alert">
-            {error.split('\n').map((line) => (
-              <p key={line}>{line}</p>
-            ))}
-          </div>
+            {error ? (
+              <div className="editor-error" role="alert">
+                {error.split('\n').map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+            ) : null}
+            <div className="editor-actions">
+              <button type="button" onClick={onClose}>
+                Cancel
+              </button>
+              <button className="save-button" type="button" onClick={saveChanges} disabled={saving}>
+                <Save size={16} aria-hidden="true" />
+                {saving ? 'Saving...' : 'Save CSV'}
+              </button>
+            </div>
+          </>
         ) : null}
-        <div className="editor-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="save-button" type="button" onClick={saveChanges} disabled={saving}>
-            <Save size={16} aria-hidden="true" />
-            {saving ? 'Saving...' : 'Save CSV'}
-          </button>
-        </div>
       </aside>
     </div>
   )
@@ -1231,15 +1589,14 @@ function LoadErrorState({ error, onRetry }: { error: string; onRetry: () => void
 }
 
 function FirstRunSetup({ onReady }: { onReady: (portfolio: Portfolio) => void }) {
-  const [positionsCsv, setPositionsCsv] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
-  async function setup(mode: 'demo' | 'blank' | 'import') {
+  async function setup(mode: 'demo' | 'blank') {
     setSaving(true)
     setError('')
     try {
-      const response = await postSetup(mode, positionsCsv)
+      const response = await postSetup(mode)
       if ('setupRequired' in response && response.setupRequired) {
         throw new Error('Setup did not finish. Try again or check local file permissions.')
       }
@@ -1272,27 +1629,7 @@ function FirstRunSetup({ onReady }: { onReady: (portfolio: Portfolio) => void })
             <span>Create empty local files and add your own holdings from scratch.</span>
           </button>
         </div>
-        <label className="csv-import">
-          Import positions CSV
-          <small>
-            Paste reviewed CSV rows from your spreadsheet or AI agent. Ask the agent to preview
-            assumptions, missing fields, sectors, cash, and ticker issues before you import.
-          </small>
-          <textarea
-            value={positionsCsv}
-            onChange={(event) => setPositionsCsv(event.target.value)}
-            placeholder={`ticker,company,underlying,assetType,side,quantity,averageCost,marketValue,sector
-AAPL,Apple Inc.,AAPL,stock,long,25,180,,Mega-Cap Technology`}
-          />
-        </label>
-        <button
-          className="import-button"
-          type="button"
-          onClick={() => void setup('import')}
-          disabled={saving || !positionsCsv.trim()}
-        >
-          Import CSV
-        </button>
+        <AiImportWorkflow onImported={onReady} />
         {error ? (
           <div className="editor-error setup-error" role="alert">
             {error.split('\n').map((line) => (
