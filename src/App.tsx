@@ -2046,6 +2046,9 @@ function HealthCheckPanel({
   onClose: () => void
 }) {
   const fileSummary = health?.files.map((file) => `${file.fileName}: ${file.exists ? 'Found' : 'Missing'}`) || []
+  const nextSteps = health
+    ? health.nextSteps.filter((step) => !health.ok || step !== 'No action needed.')
+    : []
 
   return (
     <div className="health-backdrop" role="presentation">
@@ -2085,62 +2088,67 @@ function HealthCheckPanel({
 
         {health ? (
           <>
-            <div className="health-grid">
-              {Object.entries(health.checks).map(([key, check]) => (
-                <div className={check.ok ? 'is-ok' : 'needs-attention'} key={key}>
-                  <span>{key.replace(/([A-Z])/g, ' $1')}</span>
-                  <strong>{check.ok ? 'OK' : 'Review'}</strong>
-                  <small>{check.message}</small>
+            {nextSteps.length ? (
+              <div className="health-next-steps">
+                <strong>Next steps</strong>
+                {nextSteps.map((step) => (
+                  <p key={step}>{step}</p>
+                ))}
+              </div>
+            ) : null}
+
+            <details className="health-advanced" open={!health.ok}>
+              <summary>{health.ok ? 'Technical details' : 'Review technical details'}</summary>
+              <div className="health-grid">
+                {Object.entries(health.checks).map(([key, check]) => (
+                  <div className={check.ok ? 'is-ok' : 'needs-attention'} key={key}>
+                    <span>{key.replace(/([A-Z])/g, ' $1')}</span>
+                    <strong>{check.ok ? 'OK' : 'Review'}</strong>
+                    <small>{check.message}</small>
+                  </div>
+                ))}
+              </div>
+
+              <div className="health-detail-list">
+                <div>
+                  <span>Data files</span>
+                  <p>{fileSummary.join(' | ')}</p>
                 </div>
-              ))}
-            </div>
-
-            <div className="health-detail-list">
-              <div>
-                <span>Data files</span>
-                <p>{fileSummary.join(' | ')}</p>
+                <div>
+                  <span>Schema</span>
+                  <p>
+                    Version {health.schema.version ?? 'missing'} of {health.schema.currentVersion};{' '}
+                    {health.schema.migrationCount} migration record{health.schema.migrationCount === 1 ? '' : 's'}.
+                  </p>
+                </div>
+                <div>
+                  <span>Backups</span>
+                  <p>
+                    {health.backups.count} file{health.backups.count === 1 ? '' : 's'}
+                    {health.backups.newestCreatedAt ? `; newest ${formatHealthDate(health.backups.newestCreatedAt)}` : ''}.
+                  </p>
+                </div>
+                <div>
+                  <span>Price cache</span>
+                  <p>
+                    {health.priceCache.recordCount} cached record{health.priceCache.recordCount === 1 ? '' : 's'}
+                    {health.priceCache.newestFetchedAt
+                      ? `; newest ${formatHealthDate(health.priceCache.newestFetchedAt)}`
+                      : ''}.
+                  </p>
+                </div>
+                <div>
+                  <span>Source</span>
+                  <p>
+                    {health.source.source === 'demo'
+                      ? 'Demo data'
+                      : health.source.source === 'user'
+                        ? 'User data'
+                        : 'Not set'}
+                  </p>
+                </div>
               </div>
-              <div>
-                <span>Schema</span>
-                <p>
-                  Version {health.schema.version ?? 'missing'} of {health.schema.currentVersion};{' '}
-                  {health.schema.migrationCount} migration record{health.schema.migrationCount === 1 ? '' : 's'}.
-                </p>
-              </div>
-              <div>
-                <span>Backups</span>
-                <p>
-                  {health.backups.count} file{health.backups.count === 1 ? '' : 's'}
-                  {health.backups.newestCreatedAt ? `; newest ${formatHealthDate(health.backups.newestCreatedAt)}` : ''}.
-                </p>
-              </div>
-              <div>
-                <span>Price cache</span>
-                <p>
-                  {health.priceCache.recordCount} cached record{health.priceCache.recordCount === 1 ? '' : 's'}
-                  {health.priceCache.newestFetchedAt
-                    ? `; newest ${formatHealthDate(health.priceCache.newestFetchedAt)}`
-                    : ''}.
-                </p>
-              </div>
-              <div>
-                <span>Source</span>
-                <p>
-                  {health.source.source === 'demo'
-                    ? 'Demo data'
-                    : health.source.source === 'user'
-                      ? 'User data'
-                      : 'Not set'}
-                </p>
-              </div>
-            </div>
-
-            <div className="health-next-steps">
-              <strong>Next steps</strong>
-              {health.nextSteps.map((step) => (
-                <p key={step}>{step}</p>
-              ))}
-            </div>
+            </details>
           </>
         ) : null}
       </aside>
