@@ -10,6 +10,7 @@ const demoDataDir = join(root, 'demo-data', 'sample')
 const logoDir = join(dataDir, 'logos')
 const backupDir = join(dataDir, 'backups')
 const priceCacheFile = join(dataDir, 'price-cache.json')
+const sourceFile = join(dataDir, 'source.json')
 const demoLogoDir = join(demoDataDir, 'logos')
 const distDir = join(root, 'dist')
 const port = Number(process.env.PORT || 8787)
@@ -79,6 +80,7 @@ async function seedDemoDataFiles({ overwrite = false } = {}) {
   } catch {
     // Demo logos are optional; missing logos can still be fetched and cached on demand.
   }
+  await writePortfolioSource('demo')
 }
 
 function todayIso() {
@@ -116,6 +118,32 @@ async function writeBlankDataFiles() {
   ])
 }
 
+async function writePortfolioSource(kind) {
+  await ensureLocalDataDirectories()
+  const source = kind === 'demo' ? 'demo' : 'user'
+  await writeFile(
+    sourceFile,
+    `${JSON.stringify({ source, updatedAt: new Date().toISOString() }, null, 2)}\n`,
+  )
+}
+
+async function readPortfolioSource(settings = null) {
+  try {
+    const raw = await readFile(sourceFile, 'utf8')
+    const parsed = JSON.parse(raw)
+    if (parsed?.source === 'demo') return { source: 'demo', isDemo: true }
+    if (parsed?.source === 'user') return { source: 'user', isDemo: false }
+  } catch {
+    // Older local data may predate explicit source metadata.
+  }
+
+  if ((settings?.accountName || '').toLowerCase().includes('sample investment portfolio')) {
+    return { source: 'demo', isDemo: true }
+  }
+
+  return { source: 'user', isDemo: false }
+}
+
 async function initializePortfolioData(payload) {
   const mode = String(payload?.mode || '')
 
@@ -126,6 +154,7 @@ async function initializePortfolioData(payload) {
 
   if (mode === 'blank') {
     await writeBlankDataFiles()
+    await writePortfolioSource('user')
     return
   }
 
@@ -134,6 +163,7 @@ async function initializePortfolioData(payload) {
     validatePositions(positions)
     await writeBlankDataFiles()
     await writeFile(join(dataDir, 'positions.csv'), `${toCsv(positions)}\n`)
+    await writePortfolioSource('user')
     return
   }
 
@@ -161,6 +191,7 @@ async function backupLocalDataFiles() {
     backupLocalDataFile('settings.json'),
     backupLocalDataFile('positions.csv'),
     backupLocalDataFile('performance.csv'),
+    backupLocalDataFile('source.json'),
   ])
 }
 
@@ -184,6 +215,7 @@ async function resetPortfolioData(payload) {
   }
 
   await writeBlankDataFiles()
+  await writePortfolioSource('user')
 }
 
 function sendJson(response, status, payload) {
@@ -941,6 +973,7 @@ async function buildPortfolio() {
     return { setupRequired: true }
   }
   const [settings, positions] = await Promise.all([readSettings(), readPositions()])
+  const source = await readPortfolioSource(settings)
   const tickers = positions.map((position) => position.underlying || position.ticker)
   const prices = await fetchPrices(tickers)
   const basePerformance = await readPerformance(settings)
@@ -962,6 +995,7 @@ async function buildPortfolio() {
     positions,
     performance,
     prices,
+    source,
     ...consolidated,
   }
 }
@@ -982,6 +1016,7 @@ async function saveSettings(payload) {
     baselineInvested: toNumber(payload.baselineInvested),
   }
   await writeFile(join(dataDir, 'settings.json'), `${JSON.stringify(next, null, 2)}\n`)
+  await writePortfolioSource('user')
 }
 
 async function savePositions(positions) {
@@ -990,6 +1025,7 @@ async function savePositions(positions) {
   await backupLocalDataFile('positions.csv')
   const rows = Array.isArray(positions) ? positions.map(normalizePositionForSave) : []
   await writeFile(join(dataDir, 'positions.csv'), `${toCsv(rows)}\n`)
+  await writePortfolioSource('user')
 }
 
 async function savePortfolio(payload) {
@@ -1014,6 +1050,7 @@ async function savePortfolio(payload) {
   await Promise.all([
     writeFile(join(dataDir, 'settings.json'), `${JSON.stringify(nextSettings, null, 2)}\n`),
     writeFile(join(dataDir, 'positions.csv'), `${toCsv(positions.map(normalizePositionForSave))}\n`),
+    writePortfolioSource('user'),
   ])
 }
 
