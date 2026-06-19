@@ -98,6 +98,18 @@ The eye icon reveals private dollar values:
 - Current cash is calculated as account total minus current net invested.
 - Year-to-date return is calculated as `(current book value - starting book value) / starting book value`.
 
+## Performance CSV
+
+`data/performance.csv` supports:
+
+- `date`: chart point date in `YYYY-MM-DD` format.
+- `returnPct`: portfolio cumulative return percentage for that date.
+- `benchmarkReturnPct`: optional benchmark cumulative return percentage for that date.
+
+If `benchmarkReturnPct` is present for more than one row, the performance chart displays a dashed
+benchmark line next to the portfolio line. If it is missing or blank, the chart shows only the
+portfolio line.
+
 ## Logos
 
 The browser loads logos from local routes such as `/api/logo/SNDK`. On first request, the server

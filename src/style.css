@@ -474,6 +474,37 @@ a {
   overflow: hidden;
 }
 
+.chart-legend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 14px;
+  margin-bottom: 6px;
+  color: #7f8998;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chart-legend i {
+  display: block;
+  width: 18px;
+  height: 2px;
+}
+
+.portfolio-key {
+  background: #2e8b6d;
+}
+
+.benchmark-key {
+  background: #9a8f7c;
+}
+
 .chart-panel svg {
   display: block;
   width: 100%;
@@ -495,6 +526,15 @@ a {
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 2.7;
+}
+
+.benchmark-line {
+  fill: none;
+  stroke: #9a8f7c;
+  stroke-dasharray: 7 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
 }
 
 .chart-captions {

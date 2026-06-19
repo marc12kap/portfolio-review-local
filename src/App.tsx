@@ -66,6 +66,7 @@ type OptionExposure = {
 type PerformancePoint = {
   date: string
   returnPct: number
+  benchmarkReturnPct: number | null
 }
 
 type Portfolio = {
@@ -234,24 +235,55 @@ function PerformanceChart({ points, finalReturn }: { points: PerformancePoint[];
   const paddingTop = 10
   const paddingBottom = 24
   const plotHeight = height - paddingTop - paddingBottom
-  const chartPoints = points.length ? points : [{ date: '', returnPct: 0 }]
-  const maxValue = Math.max(20, ...chartPoints.map((point) => point.returnPct), finalReturn) * 1.08
-  const minValue = Math.min(0, ...chartPoints.map((point) => point.returnPct))
+  const chartPoints = points.length ? points : [{ date: '', returnPct: 0, benchmarkReturnPct: null }]
+  const benchmarkPoints = chartPoints.filter((point) => point.benchmarkReturnPct !== null)
+  const values = [
+    ...chartPoints.map((point) => point.returnPct),
+    ...benchmarkPoints.map((point) => point.benchmarkReturnPct ?? 0),
+    finalReturn,
+  ]
+  const maxValue = Math.max(20, ...values) * 1.08
+  const minValue = Math.min(0, ...values)
   const range = Math.max(1, maxValue - minValue)
 
-  const coordinates = chartPoints.map((point, index) => {
-    const x = chartPoints.length === 1 ? width : (index / (chartPoints.length - 1)) * width
-    const y = paddingTop + ((maxValue - point.returnPct) / range) * plotHeight
-    return [x, y] as const
-  })
+  function coordinatesFor(valueForPoint: (point: PerformancePoint) => number) {
+    return chartPoints.map((point, index) => {
+      const x = chartPoints.length === 1 ? width : (index / (chartPoints.length - 1)) * width
+      const y = paddingTop + ((maxValue - valueForPoint(point)) / range) * plotHeight
+      return [x, y] as const
+    })
+  }
 
-  const linePath = coordinates
+  const coordinates = coordinatesFor((point) => point.returnPct)
+  const hasBenchmark = benchmarkPoints.length > 1
+
+  function pathFor(pointsForPath: readonly (readonly [number, number])[]) {
+    return pointsForPath
+      .map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`)
+      .join(' ')
+  }
+
+  const linePath = pathFor(coordinates)
+  const benchmarkLinePath = chartPoints
+    .map((point, index) => {
+      if (point.benchmarkReturnPct === null) return null
+      const x = chartPoints.length === 1 ? width : (index / (chartPoints.length - 1)) * width
+      const y = paddingTop + ((maxValue - point.benchmarkReturnPct) / range) * plotHeight
+      return [x, y] as const
+    })
+    .filter((point): point is readonly [number, number] => Boolean(point))
     .map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`)
     .join(' ')
   const areaPath = `${linePath} L ${width} ${height - paddingBottom} L 0 ${height - paddingBottom} Z`
 
   return (
     <div className="chart-panel" aria-label="Performance chart">
+      {hasBenchmark ? (
+        <div className="chart-legend" aria-label="Performance chart legend">
+          <span><i className="portfolio-key" />Portfolio</span>
+          <span><i className="benchmark-key" />Benchmark</span>
+        </div>
+      ) : null}
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Year-to-date return path">
         <defs>
           <linearGradient id="returnFill" x1="0" x2="0" y1="0" y2="1">
@@ -263,6 +295,7 @@ function PerformanceChart({ points, finalReturn }: { points: PerformancePoint[];
         <line className="grid-line" x1="0" x2={width} y1="91" y2="91" />
         <line className="grid-line" x1="0" x2={width} y1="140" y2="140" />
         <path className="return-area" d={areaPath} />
+        {hasBenchmark ? <path className="benchmark-line" d={benchmarkLinePath} /> : null}
         <path className="return-line" d={linePath} />
       </svg>
     </div>
