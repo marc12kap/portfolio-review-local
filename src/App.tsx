@@ -200,6 +200,40 @@ function formatNumber(value: number) {
   }).format(value)
 }
 
+function parseFormattedNumber(value: string) {
+  const numeric = Number(value.replace(/[$,%\s,]/g, ''))
+  return Number.isFinite(numeric) ? numeric : 0
+}
+
+function NumberField({
+  label,
+  value,
+  onChange,
+  prefix,
+  helper,
+}: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+  prefix?: string
+  helper?: string
+}) {
+  return (
+    <label>
+      {label}
+      <span className="input-shell">
+        {prefix ? <span aria-hidden="true">{prefix}</span> : null}
+        <input
+          inputMode="decimal"
+          value={value || ''}
+          onChange={(event) => onChange(parseFormattedNumber(event.target.value))}
+        />
+      </span>
+      {helper ? <small>{helper}</small> : null}
+    </label>
+  )
+}
+
 function classNameForReturn(value: number) {
   return value >= 0 ? 'positive' : 'negative'
 }
@@ -764,26 +798,20 @@ function Editor({
               onChange={(event) => setSettings({ ...settings, asOfDate: event.target.value })}
             />
           </label>
-          <label>
-            Available cash
-            <input
-              type="number"
-              value={settings.cashBalance}
-              onChange={(event) =>
-                setSettings({ ...settings, cashBalance: Number(event.target.value) })
-              }
-            />
-          </label>
-          <label>
-            Beginning of Year Starting Book Value
-            <input
-              type="number"
-              value={settings.baselineInvested}
-              onChange={(event) =>
-                setSettings({ ...settings, baselineInvested: Number(event.target.value) })
-              }
-            />
-          </label>
+          <NumberField
+            label="Available cash"
+            value={settings.cashBalance}
+            onChange={(cashBalance) => setSettings({ ...settings, cashBalance })}
+            prefix="$"
+            helper="Cash not invested in positions."
+          />
+          <NumberField
+            label="Beginning book value"
+            value={settings.baselineInvested}
+            onChange={(baselineInvested) => setSettings({ ...settings, baselineInvested })}
+            prefix="$"
+            helper="Starting value for YTD return."
+          />
         </div>
 
         <div className="reset-panel" aria-label="Reset local portfolio data">
@@ -854,18 +882,20 @@ function Editor({
             </button>
           </div>
           <p className="editor-note">
-            Enter shares for stock rows and contracts for option rows. Average cost stays optional
-            but should be filled in when known.
+            Enter shares for stock rows and contracts for option rows. Money fields accept commas
+            and dollar signs; saved CSV values stay numeric.
           </p>
           <div className="editable-table">
             <div className="editable-row editable-head">
               <span>Ticker</span>
               <span>Shares / contracts</span>
               <span>Avg cost</span>
+              <span>Fallback value</span>
               <span>Type</span>
               <span>Side</span>
               <span>Opt</span>
               <span>Strike</span>
+              <span>Multiplier</span>
               <span>Expiry</span>
               <span>Premium</span>
               <span>Sector</span>
@@ -880,15 +910,28 @@ function Editor({
                   aria-label="Ticker"
                 />
                 <input
+                  className="quantity-input"
                   value={position.quantity}
                   onChange={(event) => updatePosition(position.id, 'quantity', event.target.value)}
                   aria-label="Shares or contracts"
+                  inputMode="decimal"
+                  placeholder={position.assetType === 'stock' ? 'shares' : 'contracts'}
                 />
                 <input
+                  className="money-input"
                   value={position.averageCost}
                   onChange={(event) => updatePosition(position.id, 'averageCost', event.target.value)}
                   aria-label="Average cost"
-                  placeholder="per share/contract"
+                  inputMode="decimal"
+                  placeholder="$ / unit"
+                />
+                <input
+                  className="money-input"
+                  value={position.marketValue}
+                  onChange={(event) => updatePosition(position.id, 'marketValue', event.target.value)}
+                  aria-label="Fallback market value"
+                  inputMode="decimal"
+                  placeholder="$ total"
                 />
                 <select
                   value={position.assetType}
@@ -917,10 +960,20 @@ function Editor({
                   <option value="put">Put</option>
                 </select>
                 <input
+                  className="money-input"
                   value={position.strikePrice}
                   onChange={(event) => updatePosition(position.id, 'strikePrice', event.target.value)}
                   aria-label="Strike price"
-                  placeholder="-"
+                  inputMode="decimal"
+                  placeholder="$ strike"
+                />
+                <input
+                  className="quantity-input"
+                  value={position.multiplier}
+                  onChange={(event) => updatePosition(position.id, 'multiplier', event.target.value)}
+                  aria-label="Contract multiplier"
+                  inputMode="decimal"
+                  placeholder="100"
                 />
                 <input
                   type="date"
@@ -929,10 +982,12 @@ function Editor({
                   aria-label="Expiry date"
                 />
                 <input
+                  className="money-input"
                   value={position.premium}
                   onChange={(event) => updatePosition(position.id, 'premium', event.target.value)}
                   aria-label="Premium"
-                  placeholder="-"
+                  inputMode="decimal"
+                  placeholder="$"
                 />
                 <input
                   value={position.sector}

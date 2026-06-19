@@ -128,6 +128,9 @@ falls back to `SPY` for an S&P 500 benchmark label.
 | `structure` | Report wording, such as `Common shares` or `Shares with covered-call hedge`. |
 | `logoUrl` | Company logo URL. |
 
+The editor accepts formatted money values such as `$12,500.50`, but saved CSV values are normalized
+to plain numbers such as `12500.5`. Quantity fields are for shares or contracts, not dollar values.
+
 ## Performance And Benchmarks
 
 `data/performance.csv` supports:
