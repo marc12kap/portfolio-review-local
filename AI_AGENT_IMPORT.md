@@ -9,8 +9,8 @@ chooses to provide.
 
 ## Recommended User Prompt
 
-Paste this into an AI coding agent after opening this project folder. The in-app AI import workflow
-also includes a copyable version of this prompt for convenience:
+Paste this into Claude Code, Codex, or another AI coding agent after opening this project folder.
+The in-app AI import workflow also includes a copyable version of this prompt for convenience:
 
 ```text
 I want you to help seed my local Portfolio Review Local dashboard.
@@ -21,8 +21,8 @@ portfolio data anywhere except through the AI tool I am intentionally using in t
 First, inspect README.md, AGENTS.md, and AI_AGENT_IMPORT.md so you understand the required CSV and
 settings formats.
 
-Then ask me for my holdings data. I may paste a brokerage export, a table, rough notes, or a
-screenshot transcription. Convert what I provide into:
+Then ask me for my holdings data. I may paste a brokerage CSV export, a copied table, screenshots or
+statement snippets, rough notes, cash balances, or performance history. Convert what I provide into:
 
 1. data/positions.csv rows using the documented columns.
 2. data/settings.json values for account name, available cash, beginning book value, benchmark, and

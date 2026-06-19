@@ -94,7 +94,7 @@ On first run, choose one of:
 
 - `Use Demo Data`: copy the fictional sample investment portfolio from `demo-data/sample`.
 - `Start Blank`: create empty local CSV/JSON files.
-- `Import CSV`: initialize from pasted `positions.csv` contents.
+- `AI / CSV Import`: copy an AI-agent prompt or paste drafted `positions.csv` contents for preview.
 
 Recommended first-time flow:
 
@@ -103,7 +103,7 @@ Recommended first-time flow:
 2. When you are ready to use your real portfolio, click `Edit Positions`.
 3. In the editor, use `Start Blank` under `Reset local files` to remove the seeded demo rows. The
    app creates backups before replacing anything.
-4. Add your own holdings manually in the editor, or ask an AI agent to follow
+4. Add your own holdings manually in the editor, or use `AI / CSV Import` to ask an AI agent to follow
    [AI_AGENT_IMPORT.md](AI_AGENT_IMPORT.md) and convert an existing holdings export, statement,
    spreadsheet, screenshot transcription, or notes into the local file format.
 5. Put each holding into a useful `sector` or theme bucket, such as `Mega-Cap Technology`, `Broad
