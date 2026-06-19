@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { consolidatePositions, inferStructure, validatePositions, validateSettings } from '../server.mjs'
+import {
+  cleanBenchmarkTicker,
+  consolidatePositions,
+  inferStructure,
+  validatePositions,
+  validateSettings,
+} from '../server.mjs'
 
 const settings = (overrides = {}) => ({
   accountTotal: 10_000,
@@ -324,5 +330,13 @@ describe('validation', () => {
         return true
       },
     )
+  })
+})
+
+describe('benchmark settings', () => {
+  it('defaults blank benchmark tickers to SPY and normalizes custom tickers', () => {
+    assert.equal(cleanBenchmarkTicker(''), 'SPY')
+    assert.equal(cleanBenchmarkTicker(undefined), 'SPY')
+    assert.equal(cleanBenchmarkTicker(' voo '), 'VOO')
   })
 })

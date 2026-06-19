@@ -4,6 +4,7 @@ import { Edit3, Eye, EyeOff, Plus, RefreshCw, RotateCcw, Save, Trash2, X } from 
 type Settings = {
   accountName: string
   benchmarkName: string
+  benchmarkTicker: string
   asOfDate: string
   asOfLabel: string
   periodStart: string
@@ -250,10 +251,12 @@ function PerformanceChart({
   points,
   finalReturn,
   benchmarkName,
+  benchmarkTicker,
 }: {
   points: PerformancePoint[]
   finalReturn: number
   benchmarkName: string
+  benchmarkTicker: string
 }) {
   const width = 900
   const height = 178
@@ -306,7 +309,10 @@ function PerformanceChart({
       {hasBenchmark ? (
         <div className="chart-legend" aria-label="Performance chart legend">
           <span><i className="portfolio-key" />Portfolio</span>
-          <span><i className="benchmark-key" />{benchmarkName || 'Benchmark'}</span>
+          <span>
+            <i className="benchmark-key" />
+            {benchmarkName || 'Benchmark'} ({benchmarkTicker || 'SPY'})
+          </span>
         </div>
       ) : null}
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Year-to-date return path">
@@ -690,6 +696,16 @@ function Editor({
             <input
               value={settings.benchmarkName}
               onChange={(event) => setSettings({ ...settings, benchmarkName: event.target.value })}
+            />
+          </label>
+          <label>
+            Benchmark ticker
+            <input
+              value={settings.benchmarkTicker}
+              onChange={(event) =>
+                setSettings({ ...settings, benchmarkTicker: event.target.value.toUpperCase() })
+              }
+              placeholder="SPY"
             />
           </label>
           <label>
@@ -1195,6 +1211,7 @@ function App() {
             points={portfolio.performance}
             finalReturn={metrics.ytdReturnPercent}
             benchmarkName={settings.benchmarkName}
+            benchmarkTicker={settings.benchmarkTicker}
           />
           <div className="chart-captions">
             <span>{settings.periodStartLabel} - baseline 0%</span>
