@@ -119,6 +119,31 @@ type ApiErrorPayload = {
 }
 
 type ResetMode = 'demo' | 'blank'
+const gettingStartedDismissedKey = 'portfolio-review-getting-started-dismissed'
+
+function readStoredFlag(key: string) {
+  try {
+    return globalThis.localStorage?.getItem(key) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function writeStoredFlag(key: string, value: boolean) {
+  try {
+    globalThis.localStorage?.setItem(key, String(value))
+  } catch {
+    // Storage can be unavailable in some embedded browser contexts.
+  }
+}
+
+function removeStoredFlag(key: string) {
+  try {
+    globalThis.localStorage?.removeItem(key)
+  } catch {
+    // Storage can be unavailable in some embedded browser contexts.
+  }
+}
 
 async function fetchPortfolio() {
   const response = await fetch('/api/portfolio')
@@ -684,6 +709,67 @@ function PriceIssuePanel({
   )
 }
 
+function GettingStartedChecklist({
+  portfolio,
+  showPrivate,
+  onEdit,
+  onShowPrivate,
+  onDismiss,
+}: {
+  portfolio: Portfolio
+  showPrivate: boolean
+  onEdit: () => void
+  onShowPrivate: () => void
+  onDismiss: () => void
+}) {
+  const hasHoldings = portfolio.holdings.length > 0
+  const hasPerformance = portfolio.performance.length > 1
+  const hasPriceIssues = portfolio.priceIssues.length > 0
+  const hasFallbackOrCachedPrices = portfolio.holdings.some((holding) =>
+    ['cached', 'fallback', 'missing'].includes(holding.priceStatus),
+  )
+
+  return (
+    <section className="report-section getting-started-section" aria-label="Getting started checklist">
+      <div className="section-heading">
+        <h2>Getting Started</h2>
+        <button type="button" onClick={onDismiss}>Dismiss</button>
+      </div>
+      <div className="checklist-grid">
+        <button type="button" className={hasHoldings ? 'done' : ''} onClick={onEdit}>
+          <b>{hasHoldings ? 'Done' : 'Start'}</b>
+          <span>Edit positions</span>
+          <small>Add holdings, cash, option rows, and fallback values when needed.</small>
+        </button>
+        <button type="button" className={showPrivate ? 'done' : ''} onClick={onShowPrivate}>
+          <b>{showPrivate ? 'Shown' : 'Review'}</b>
+          <span>Check book values</span>
+          <small>Confirm available cash and beginning book value in the editor.</small>
+        </button>
+        <a href="/api/performance.csv" target="_blank" rel="noreferrer" className={hasPerformance ? 'done' : ''}>
+          <b>{hasPerformance ? 'Ready' : 'CSV'}</b>
+          <span>Review performance</span>
+          <small>Use the local performance CSV for YTD and benchmark history.</small>
+        </a>
+        <button type="button" className={!hasPriceIssues ? 'done' : ''} onClick={onEdit}>
+          <b>{hasPriceIssues ? 'Fix' : 'Clear'}</b>
+          <span>Validate prices</span>
+          <small>
+            {hasFallbackOrCachedPrices
+              ? 'Live, cached, and fallback price badges show source status.'
+              : 'Fresh live prices are flowing for current holdings.'}
+          </small>
+        </button>
+        <a href="/api/positions.csv" target="_blank" rel="noreferrer" className="done">
+          <b>Local</b>
+          <span>Know backups</span>
+          <small>Editor saves and reset actions create timestamped local backups.</small>
+        </a>
+      </div>
+    </section>
+  )
+}
+
 function Editor({
   portfolio,
   onClose,
@@ -1165,6 +1251,9 @@ function App() {
   const [error, setError] = useState('')
   const [editorOpen, setEditorOpen] = useState(false)
   const [showPrivate, setShowPrivate] = useState(false)
+  const [gettingStartedDismissed, setGettingStartedDismissed] = useState(() =>
+    readStoredFlag(gettingStartedDismissedKey),
+  )
 
   async function loadPortfolio() {
     setLoading(true)
@@ -1224,6 +1313,8 @@ function App() {
     return (
       <FirstRunSetup
         onReady={(nextPortfolio) => {
+          removeStoredFlag(gettingStartedDismissedKey)
+          setGettingStartedDismissed(false)
           setSetupRequired(false)
           setPortfolio(nextPortfolio)
         }}
@@ -1237,6 +1328,7 @@ function App() {
 
   const { settings, metrics } = portfolio
   const hasHoldings = portfolio.holdings.length > 0
+  const showGettingStarted = !gettingStartedDismissed
 
   return (
     <>
@@ -1312,6 +1404,19 @@ function App() {
               <strong>{formatCurrency(metrics.cashValue)}</strong>
             </div>
           </section>
+        ) : null}
+
+        {showGettingStarted ? (
+          <GettingStartedChecklist
+            portfolio={portfolio}
+            showPrivate={showPrivate}
+            onEdit={() => setEditorOpen(true)}
+            onShowPrivate={() => setShowPrivate(true)}
+            onDismiss={() => {
+              writeStoredFlag(gettingStartedDismissedKey, true)
+              setGettingStartedDismissed(true)
+            }}
+          />
         ) : null}
 
         <AllocationSnapshot
