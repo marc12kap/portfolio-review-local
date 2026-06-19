@@ -85,6 +85,29 @@ describe('consolidatePositions', () => {
     assert.equal(byTicker(result, 'ABC').priceStatus, 'live')
   })
 
+  it('uses cached last-known prices before manual fallback values', () => {
+    const result = consolidatePositions(
+      [position({ quantity: '10', marketValue: '9999' })],
+      {
+        ABC: {
+          price: 21,
+          source: 'Yahoo Finance chart',
+          fetchedAt: 123,
+          status: 'cached',
+        },
+      },
+      settings({ accountTotal: 1_000, baselineInvested: 1_000 }),
+    )
+
+    assert.equal(result.priceIssues.length, 0)
+    assert.equal(result.metrics.investedValue, 210)
+    assert.equal(byTicker(result, 'ABC').value, 210)
+    assert.equal(byTicker(result, 'ABC').price, 21)
+    assert.equal(byTicker(result, 'ABC').priceSource, 'Yahoo Finance chart')
+    assert.equal(byTicker(result, 'ABC').priceFetchedAt, 123)
+    assert.equal(byTicker(result, 'ABC').priceStatus, 'cached')
+  })
+
   it('calculates current book value from invested value plus cash balance', () => {
     const result = consolidatePositions(
       [position({ quantity: '10' })],

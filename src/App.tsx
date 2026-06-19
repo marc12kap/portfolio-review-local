@@ -46,7 +46,7 @@ type Holding = {
   price: number | null
   priceSource: string
   priceFetchedAt: number | null
-  priceStatus: 'live' | 'fallback' | 'missing'
+  priceStatus: 'live' | 'cached' | 'fallback' | 'missing'
 }
 
 type Sector = {
@@ -274,6 +274,7 @@ function formatPriceFetchedAt(value: number | null) {
 
 function priceStatusLabel(holding: Holding) {
   if (holding.priceStatus === 'live') return 'Live'
+  if (holding.priceStatus === 'cached') return 'Cached'
   if (holding.priceStatus === 'fallback') return 'Fallback'
   return 'Missing'
 }
@@ -283,6 +284,14 @@ function priceStatusTitle(holding: Holding) {
     return [
       `Live price from ${holding.priceSource || 'market data source'}.`,
       holding.priceFetchedAt ? `Fetched ${formatPriceFetchedAt(holding.priceFetchedAt)}.` : '',
+    ]
+      .filter(Boolean)
+      .join(' ')
+  }
+  if (holding.priceStatus === 'cached') {
+    return [
+      `Using the last known ${holding.priceSource || 'market data'} price because a fresh price was unavailable.`,
+      holding.priceFetchedAt ? `Last fetched ${formatPriceFetchedAt(holding.priceFetchedAt)}.` : '',
     ]
       .filter(Boolean)
       .join(' ')
