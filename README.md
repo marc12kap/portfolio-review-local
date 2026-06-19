@@ -225,9 +225,9 @@ to plain numbers such as `12500.5`. Quantity fields are for shares or contracts,
 
 ## Performance And Benchmarks
 
-The dashboard values current holdings as of today. It does not reconstruct past holdings from a
-transaction ledger. Year-to-date return is calculated from today's current book value versus the
-beginning book value you provide.
+The dashboard values current holdings as of today in Eastern Time. It does not reconstruct past
+holdings from a transaction ledger. Year-to-date return is calculated from today's current book value
+versus the beginning book value you provide.
 
 `data/performance.csv` supports:
 

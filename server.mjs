@@ -14,6 +14,7 @@ const demoLogoDir = join(demoDataDir, 'logos')
 const distDir = join(root, 'dist')
 const port = Number(process.env.PORT || 8787)
 const currentSchemaVersion = 1
+const reportingTimeZone = 'America/New_York'
 const priceCache = new Map()
 const isMainModule = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false
 
@@ -104,12 +105,23 @@ async function refreshLocalSettingsReportingDates(baseDir = dataDir) {
   )
 }
 
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
+function isoDateInTimeZone(date = new Date(), timeZone = reportingTimeZone) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${values.year}-${values.month}-${values.day}`
 }
 
-function yearStartIso() {
-  return `${todayIso().slice(0, 4)}-01-01`
+function todayIso() {
+  return isoDateInTimeZone()
+}
+
+function yearStartIso(today = todayIso()) {
+  return `${today.slice(0, 4)}-01-01`
 }
 
 function normalizeReportingDates(settings, today = todayIso()) {
@@ -125,13 +137,14 @@ function normalizeReportingDates(settings, today = todayIso()) {
 }
 
 function defaultSettings() {
+  const today = todayIso()
   return {
     accountName: 'Personal Portfolio Book',
     benchmarkName: 'S&P 500',
     benchmarkTicker: 'SPY',
-    asOfDate: todayIso(),
-    periodStart: yearStartIso(),
-    periodEnd: todayIso(),
+    asOfDate: today,
+    periodStart: yearStartIso(today),
+    periodEnd: today,
     accountTotal: 0,
     cashBalance: 0,
     baselineInvested: 0,
@@ -1409,6 +1422,7 @@ export {
   cleanBenchmarkTicker,
   consolidatePositions,
   inferStructure,
+  isoDateInTimeZone,
   migrateLocalDataFiles,
   normalizePerformanceForReport,
   normalizeReportingDates,
