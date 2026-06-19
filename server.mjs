@@ -1,5 +1,5 @@
 import { createServer } from 'node:http'
-import { copyFile, readdir, readFile, writeFile, stat, mkdir } from 'node:fs/promises'
+import { copyFile, readdir, readFile, writeFile, stat, mkdir, rm } from 'node:fs/promises'
 import { createReadStream } from 'node:fs'
 import { extname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -43,6 +43,10 @@ async function copyIfMissing(sourcePath, targetPath) {
   return true
 }
 
+async function copyReplacing(sourcePath, targetPath) {
+  await copyFile(sourcePath, targetPath)
+}
+
 async function ensureLocalDataDirectories() {
   await mkdir(dataDir, { recursive: true })
   await mkdir(logoDir, { recursive: true })
@@ -54,20 +58,21 @@ async function hasLocalPortfolioData() {
   return results.every(Boolean)
 }
 
-async function seedDemoDataFiles() {
+async function seedDemoDataFiles({ overwrite = false } = {}) {
   await ensureLocalDataDirectories()
+  const copyDataFile = overwrite ? copyReplacing : copyIfMissing
 
   await Promise.all([
-    copyIfMissing(join(demoDataDir, 'settings.json'), join(dataDir, 'settings.json')),
-    copyIfMissing(join(demoDataDir, 'positions.csv'), join(dataDir, 'positions.csv')),
-    copyIfMissing(join(demoDataDir, 'performance.csv'), join(dataDir, 'performance.csv')),
+    copyDataFile(join(demoDataDir, 'settings.json'), join(dataDir, 'settings.json')),
+    copyDataFile(join(demoDataDir, 'positions.csv'), join(dataDir, 'positions.csv')),
+    copyDataFile(join(demoDataDir, 'performance.csv'), join(dataDir, 'performance.csv')),
   ])
 
   try {
     const demoLogoFiles = await readdir(demoLogoDir)
     await Promise.all(
       demoLogoFiles.map((fileName) =>
-        copyIfMissing(join(demoLogoDir, fileName), join(logoDir, fileName)),
+        copyDataFile(join(demoLogoDir, fileName), join(logoDir, fileName)),
       ),
     )
   } catch {
@@ -146,6 +151,34 @@ async function backupLocalDataFile(fileName) {
   const extension = extname(fileName)
   const baseName = fileName.slice(0, -extension.length)
   await copyFile(sourcePath, join(backupDir, `${baseName}-${backupTimestamp()}${extension}`))
+}
+
+async function backupLocalDataFiles() {
+  await Promise.all([
+    backupLocalDataFile('settings.json'),
+    backupLocalDataFile('positions.csv'),
+    backupLocalDataFile('performance.csv'),
+  ])
+}
+
+async function resetPortfolioData(payload) {
+  const mode = String(payload?.mode || '')
+
+  if (!['demo', 'blank'].includes(mode)) {
+    throw validationError('Reset validation failed.', ['Choose demo or blank reset mode.'])
+  }
+
+  await ensureLocalDataDirectories()
+  await backupLocalDataFiles()
+  await rm(logoDir, { recursive: true, force: true })
+  await mkdir(logoDir, { recursive: true })
+
+  if (mode === 'demo') {
+    await seedDemoDataFiles({ overwrite: true })
+    return
+  }
+
+  await writeBlankDataFiles()
 }
 
 function sendJson(response, status, payload) {
@@ -911,6 +944,13 @@ const server = createServer(async (request, response) => {
     if (url.pathname === '/api/setup' && request.method === 'POST') {
       const body = await readBody(request)
       await initializePortfolioData(body)
+      sendJson(response, 200, await buildPortfolio())
+      return
+    }
+
+    if (url.pathname === '/api/reset' && request.method === 'POST') {
+      const body = await readBody(request)
+      await resetPortfolioData(body)
       sendJson(response, 200, await buildPortfolio())
       return
     }

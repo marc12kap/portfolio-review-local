@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Edit3, Eye, EyeOff, Plus, RefreshCw, Save, Trash2, X } from 'lucide-react'
+import { Edit3, Eye, EyeOff, Plus, RefreshCw, RotateCcw, Save, Trash2, X } from 'lucide-react'
 
 type Settings = {
   accountName: string
@@ -125,6 +125,20 @@ async function postSetup(mode: 'demo' | 'blank' | 'import', positionsCsv = '') {
     const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
     const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
     throw new Error([payload.error || 'Unable to set up portfolio.', details].filter(Boolean).join('\n'))
+  }
+  return (await response.json()) as PortfolioResponse
+}
+
+async function postReset(mode: 'demo' | 'blank') {
+  const response = await fetch('/api/reset', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ mode }),
+  })
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
+    throw new Error([payload.error || 'Unable to reset portfolio.', details].filter(Boolean).join('\n'))
   }
   return (await response.json()) as PortfolioResponse
 }
@@ -583,6 +597,7 @@ function Editor({
   const [settings, setSettings] = useState(portfolio.settings)
   const [positions, setPositions] = useState(portfolio.positions)
   const [saving, setSaving] = useState(false)
+  const [resetting, setResetting] = useState(false)
   const [error, setError] = useState('')
 
   function updatePosition(id: string, key: keyof Position, value: string) {
@@ -611,6 +626,29 @@ function Editor({
       setError(saveError instanceof Error ? saveError.message : 'Save failed.')
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function resetData(mode: 'demo' | 'blank') {
+    const actionLabel = mode === 'demo' ? 'reload the demo portfolio' : 'clear the portfolio and start blank'
+    const confirmed = window.confirm(
+      `This will ${actionLabel}. Your current settings, positions, and performance files will be backed up first, then replaced. Continue?`,
+    )
+    if (!confirmed) return
+
+    setResetting(true)
+    setError('')
+    try {
+      const response = await postReset(mode)
+      if ('setupRequired' in response && response.setupRequired) {
+        throw new Error('Reset did not finish. Try again or check local file permissions.')
+      }
+      onSaved(response)
+      onClose()
+    } catch (resetError) {
+      setError(resetError instanceof Error ? resetError.message : 'Reset failed.')
+    } finally {
+      setResetting(false)
     }
   }
 
@@ -670,6 +708,23 @@ function Editor({
               }
             />
           </label>
+        </div>
+
+        <div className="reset-panel" aria-label="Reset local portfolio data">
+          <div>
+            <strong>Reset local files</strong>
+            <p>Back up the current files, then replace them with a blank book or fresh demo data.</p>
+          </div>
+          <div>
+            <button type="button" onClick={() => void resetData('blank')} disabled={resetting || saving}>
+              <RotateCcw size={15} aria-hidden="true" />
+              Start Blank
+            </button>
+            <button type="button" onClick={() => void resetData('demo')} disabled={resetting || saving}>
+              <RotateCcw size={15} aria-hidden="true" />
+              Reload Demo
+            </button>
+          </div>
         </div>
 
         <div className="positions-editor">
