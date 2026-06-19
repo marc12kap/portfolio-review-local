@@ -102,7 +102,7 @@ async function writeBlankDataFiles() {
     writeFile(join(dataDir, 'positions.csv'), `${toCsv([])}\n`),
     writeFile(
       join(dataDir, 'performance.csv'),
-      `date,returnPct\n${settings.periodStart},0\n${settings.periodEnd},0\n`,
+      `date,returnPct,benchmarkReturnPct\n${settings.periodStart},0,\n${settings.periodEnd},0,\n`,
     ),
   ])
 }
@@ -504,7 +504,13 @@ async function readPerformance(settings) {
   try {
     const raw = await readFile(join(dataDir, 'performance.csv'), 'utf8')
     const points = parseCsv(raw)
-      .map((row) => ({ date: formatIsoDate(row.date), returnPct: toNumber(row.returnPct) }))
+      .map((row) => ({
+        date: formatIsoDate(row.date),
+        returnPct: toNumber(row.returnPct),
+        benchmarkReturnPct: hasNumericValue(row.benchmarkReturnPct)
+          ? toNumber(row.benchmarkReturnPct)
+          : null,
+      }))
       .filter((point) => point.date)
     if (points.length > 1) return points
   } catch {
@@ -512,8 +518,8 @@ async function readPerformance(settings) {
   }
 
   return [
-    { date: settings.periodStart, returnPct: 0 },
-    { date: settings.periodEnd || settings.asOfDate, returnPct: 0 },
+    { date: settings.periodStart, returnPct: 0, benchmarkReturnPct: null },
+    { date: settings.periodEnd || settings.asOfDate, returnPct: 0, benchmarkReturnPct: null },
   ]
 }
 
