@@ -43,9 +43,19 @@ async function copyIfMissing(sourcePath, targetPath) {
   return true
 }
 
-async function ensureLocalDataFiles() {
+async function ensureLocalDataDirectories() {
   await mkdir(dataDir, { recursive: true })
   await mkdir(logoDir, { recursive: true })
+}
+
+async function hasLocalPortfolioData() {
+  const requiredFiles = ['settings.json', 'positions.csv', 'performance.csv']
+  const results = await Promise.all(requiredFiles.map((fileName) => pathExists(join(dataDir, fileName))))
+  return results.every(Boolean)
+}
+
+async function seedDemoDataFiles() {
+  await ensureLocalDataDirectories()
 
   await Promise.all([
     copyIfMissing(join(demoDataDir, 'settings.json'), join(dataDir, 'settings.json')),
@@ -63,6 +73,64 @@ async function ensureLocalDataFiles() {
   } catch {
     // Demo logos are optional; missing logos can still be fetched and cached on demand.
   }
+}
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function yearStartIso() {
+  return `${todayIso().slice(0, 4)}-01-01`
+}
+
+function defaultSettings() {
+  return {
+    accountName: 'Personal Portfolio Book',
+    asOfDate: todayIso(),
+    periodStart: yearStartIso(),
+    periodEnd: todayIso(),
+    accountTotal: 0,
+    baselineInvested: 0,
+  }
+}
+
+async function writeBlankDataFiles() {
+  await ensureLocalDataDirectories()
+  const settings = defaultSettings()
+  await Promise.all([
+    writeFile(join(dataDir, 'settings.json'), `${JSON.stringify(settings, null, 2)}\n`),
+    writeFile(join(dataDir, 'positions.csv'), `${toCsv([])}\n`),
+    writeFile(
+      join(dataDir, 'performance.csv'),
+      `date,returnPct\n${settings.periodStart},0\n${settings.periodEnd},0\n`,
+    ),
+  ])
+}
+
+async function initializePortfolioData(payload) {
+  const mode = String(payload?.mode || '')
+
+  if (mode === 'demo') {
+    await seedDemoDataFiles()
+    return
+  }
+
+  if (mode === 'blank') {
+    await writeBlankDataFiles()
+    return
+  }
+
+  if (mode === 'import') {
+    const positions = parseCsv(String(payload?.positionsCsv || ''))
+    validatePositions(positions)
+    await writeBlankDataFiles()
+    await writeFile(join(dataDir, 'positions.csv'), `${toCsv(positions)}\n`)
+    return
+  }
+
+  throw validationError('Setup validation failed.', [
+    'Choose demo, blank, or import setup mode.',
+  ])
 }
 
 function backupTimestamp() {
@@ -361,7 +429,7 @@ async function findCachedLogo(ticker) {
 }
 
 async function fetchLogo(position) {
-  await mkdir(logoDir, { recursive: true })
+  await ensureLocalDataDirectories()
   const ticker = normalizeLogoTicker(position.underlying || position.ticker)
   const cached = await findCachedLogo(ticker)
   if (cached) return cached
@@ -666,7 +734,9 @@ function consolidatePositions(positions, prices, settings) {
 }
 
 async function buildPortfolio() {
-  await ensureLocalDataFiles()
+  if (!(await hasLocalPortfolioData())) {
+    return { setupRequired: true }
+  }
   const [settings, positions] = await Promise.all([readSettings(), readPositions()])
   const tickers = positions.map((position) => position.underlying || position.ticker)
   const prices = await fetchPrices(tickers)
@@ -692,7 +762,7 @@ async function buildPortfolio() {
 }
 
 async function saveSettings(payload) {
-  await ensureLocalDataFiles()
+  await ensureLocalDataDirectories()
   validateSettings(payload)
   await backupLocalDataFile('settings.json')
   const next = {
@@ -707,7 +777,7 @@ async function saveSettings(payload) {
 }
 
 async function savePositions(positions) {
-  await ensureLocalDataFiles()
+  await ensureLocalDataDirectories()
   validatePositions(positions)
   await backupLocalDataFile('positions.csv')
   const rows = Array.isArray(positions) ? positions : []
@@ -715,7 +785,7 @@ async function savePositions(positions) {
 }
 
 async function savePortfolio(payload) {
-  await ensureLocalDataFiles()
+  await ensureLocalDataDirectories()
   const settings = payload?.settings || {}
   const positions = payload?.positions
   validateSettings(settings)
@@ -779,6 +849,13 @@ const server = createServer(async (request, response) => {
       return
     }
 
+    if (url.pathname === '/api/setup' && request.method === 'POST') {
+      const body = await readBody(request)
+      await initializePortfolioData(body)
+      sendJson(response, 200, await buildPortfolio())
+      return
+    }
+
     if (url.pathname === '/api/positions' && request.method === 'PUT') {
       const body = await readBody(request)
       await savePositions(body.positions)
@@ -794,7 +871,10 @@ const server = createServer(async (request, response) => {
     }
 
     if (url.pathname === '/api/positions.csv' && request.method === 'GET') {
-      await ensureLocalDataFiles()
+      if (!(await hasLocalPortfolioData())) {
+        sendJson(response, 404, { error: 'Local portfolio data has not been set up yet.' })
+        return
+      }
       const raw = await readFile(join(dataDir, 'positions.csv'), 'utf8')
       response.writeHead(200, {
         'content-type': 'text/csv; charset=utf-8',
@@ -806,6 +886,10 @@ const server = createServer(async (request, response) => {
 
     const logoMatch = url.pathname.match(/^\/api\/logo\/([^/]+)$/)
     if (logoMatch && request.method === 'GET') {
+      if (!(await hasLocalPortfolioData())) {
+        sendJson(response, 404, { error: 'Local portfolio data has not been set up yet.' })
+        return
+      }
       const ticker = normalizeLogoTicker(decodeURIComponent(logoMatch[1]))
       const positions = await readPositions()
       const position = positions.find((row) => row.underlying === ticker || row.ticker === ticker)
@@ -846,7 +930,7 @@ const server = createServer(async (request, response) => {
 export { consolidatePositions, inferStructure, validatePositions, validateSettings }
 
 if (isMainModule) {
-  await ensureLocalDataFiles()
+  await ensureLocalDataDirectories()
 
   server.listen(port, '127.0.0.1', () => {
     console.log(`Portfolio Review is running at http://127.0.0.1:${port}`)

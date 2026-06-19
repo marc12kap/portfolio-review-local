@@ -17,7 +17,7 @@ Using Claude Code or another coding agent? See [AGENTS.md](AGENTS.md) for local 
 - Reads positions from `data/positions.csv`.
 - Reads centralized book settings from `data/settings.json`.
 - Reads the performance path from `data/performance.csv`.
-- Seeds missing local data files from `demo-data/sample` on first run.
+- Shows first-run setup choices when local data files do not exist yet.
 - Fetches live prices from a local Node server when a row has share or contract quantity.
 - Falls back to the CSV `marketValue` column when quantity is blank or prices are unavailable.
 - Shows whether each displayed holding is using a live price, a CSV fallback, or missing price data.
@@ -64,6 +64,12 @@ npm run check
 This runs linting, TypeScript typechecking, the Node test suite, and the production build.
 
 ## Editing The Account
+
+On a fresh clone, the app asks how to initialize local files:
+
+- `Use Demo Data` copies the sample portfolio from `demo-data/sample`.
+- `Start Blank` creates empty local CSV/JSON files.
+- `Import CSV` creates local files from pasted `positions.csv` contents.
 
 Use the `Edit Positions` button in the top right of the report. Saving writes directly to:
 
