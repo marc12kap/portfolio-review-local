@@ -2373,7 +2373,7 @@ function App() {
           aria-label={showPrivate ? 'Hide private dollar amounts' : 'Show private dollar amounts'}
           title={showPrivate ? 'Hide dollar amounts' : 'Show dollar amounts'}
         >
-          {showPrivate ? <EyeOff size={16} aria-hidden="true" /> : <Eye size={16} aria-hidden="true" />}
+          {showPrivate ? <Eye size={16} aria-hidden="true" /> : <EyeOff size={16} aria-hidden="true" />}
         </button>
         <button type="button" onClick={() => void loadPortfolio()} aria-label="Refresh live prices">
           <RefreshCw size={16} aria-hidden="true" />
