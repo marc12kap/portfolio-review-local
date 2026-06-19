@@ -43,6 +43,20 @@ On first run, choose one of:
 - `Start Blank`: create empty local CSV/JSON files.
 - `Import CSV`: initialize from pasted `positions.csv` contents.
 
+Recommended first-time flow:
+
+1. Start with `Use Demo Data` to tour the dashboard and see how holdings, cash, options, sectors,
+   price badges, and backups behave.
+2. When you are ready to use your real portfolio, click `Edit Positions`.
+3. In the editor, use `Start Blank` under `Reset local files` to remove the seeded demo rows. The
+   app creates backups before replacing anything.
+4. Add your own holdings manually in the editor, or ask an AI agent to convert an existing holdings
+   export, statement, spreadsheet, or notes into the `positions.csv` shape below.
+5. Put each holding into a useful `sector` or theme bucket, such as `Mega-Cap Technology`, `Broad
+   Market ETFs`, `Energy`, `Cash & Equivalents`, or your own custom labels.
+6. Confirm available cash, beginning book value, performance CSV history, and price badges before
+   relying on the report.
+
 After setup, use `Edit Positions` and the `Reset local files` actions to back up your current files
 and either start blank or reload the demo portfolio. Reset actions require typed confirmation before
 anything is replaced.

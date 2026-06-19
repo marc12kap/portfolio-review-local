@@ -119,7 +119,7 @@ type ApiErrorPayload = {
 }
 
 type ResetMode = 'demo' | 'blank'
-const gettingStartedDismissedKey = 'portfolio-review-welcome-modal-dismissed'
+const gettingStartedDismissedKey = 'portfolio-review-demo-flow-modal-dismissed'
 
 function readStoredFlag(key: string) {
   try {
@@ -736,35 +736,53 @@ function WelcomeGettingStartedModal({
           <span>Welcome</span>
           <h2 id="welcome-title">Get Your Portfolio Ready</h2>
           <p>
-            Work through these steps once, then dismiss this note. Your portfolio files stay on
-            this computer and can be edited any time.
+            Use the demo as a quick tour. When you are ready to build your own portfolio, open
+            Edit Positions, choose Start Blank, then add or import your real holdings.
           </p>
         </div>
         <ol className="welcome-list">
           <li>
             <button type="button" className={hasHoldings ? 'done' : ''} onClick={onEdit}>
               <b>1</b>
-              <span>Enter your holdings</span>
-              <small>Add stocks, ETFs, options, cash, and any manual fallback values you already know.</small>
+              <span>Tour the demo data</span>
+              <small>Use the seeded portfolio to see allocations, sectors, prices, options, and backups.</small>
             </button>
           </li>
           <li>
-            <button type="button" className={showPrivate ? 'done' : ''} onClick={onShowPrivate}>
+            <button type="button" className={hasHoldings ? 'done' : ''} onClick={onEdit}>
               <b>2</b>
-              <span>Confirm cash and book value</span>
-              <small>Show private values, then check available cash and beginning book value.</small>
+              <span>Start your own book</span>
+              <small>Click Edit Positions, then Start Blank to remove demo rows after backups are created.</small>
             </button>
           </li>
           <li>
-            <a href="/api/performance.csv" target="_blank" rel="noreferrer" className={hasPerformance ? 'done' : ''}>
+            <button type="button" className={hasHoldings ? 'done' : ''} onClick={onEdit}>
               <b>3</b>
-              <span>Review performance history</span>
-              <small>Open the local CSV if you want YTD and benchmark history to match your records.</small>
+              <span>Add holdings and sectors</span>
+              <small>Enter tickers, shares or contracts, cash, and a sector/theme bucket for each row.</small>
+            </button>
+          </li>
+          <li>
+            <a href="/api/positions.csv" target="_blank" rel="noreferrer">
+              <b>4</b>
+              <span>Use AI for faster import</span>
+              <small>Ask an AI agent to convert your holdings export or notes into the positions CSV format.</small>
             </a>
           </li>
           <li>
+            <button
+              type="button"
+              className={showPrivate && hasPerformance && !hasPriceIssues ? 'done' : ''}
+              onClick={onShowPrivate}
+            >
+              <b>5</b>
+              <span>Review values and prices</span>
+              <small>Confirm cash, beginning book value, performance history, and price badges before relying on the report.</small>
+            </button>
+          </li>
+          <li>
             <button type="button" className={!hasPriceIssues ? 'done' : ''} onClick={onEdit}>
-              <b>4</b>
+              <b>6</b>
               <span>Check price status</span>
               <small>
                 {hasFallbackOrCachedPrices
@@ -775,7 +793,7 @@ function WelcomeGettingStartedModal({
           </li>
           <li>
             <a href="/api/positions.csv" target="_blank" rel="noreferrer" className="done">
-              <b>5</b>
+              <b>7</b>
               <span>Know where backups live</span>
               <small>Editor saves and reset actions create timestamped backups in the local data folder.</small>
             </a>
@@ -933,7 +951,10 @@ function Editor({
         <div className="reset-panel" aria-label="Reset local portfolio data">
           <div>
             <strong>Reset local files</strong>
-            <p>Back up the current files, then replace them with a blank book or fresh demo data.</p>
+            <p>
+              Finished touring the demo? Back up the current files, then start blank for your own
+              portfolio or reload the sample later.
+            </p>
           </div>
           <div>
             <button type="button" onClick={() => openResetConfirmation('blank')} disabled={resetting || saving}>
