@@ -943,12 +943,14 @@ function Editor({
             />
           </label>
           <label>
-            As-of date
+            Report date
             <input
               type="date"
               value={settings.asOfDate}
-              onChange={(event) => setSettings({ ...settings, asOfDate: event.target.value })}
+              readOnly
+              disabled
             />
+            <small>Uses today for current holdings. Add performance CSV rows for history.</small>
           </label>
           <NumberField
             label="Available cash"
@@ -1435,7 +1437,7 @@ function App() {
             <strong className={classNameForReturn(metrics.ytdReturnPercent)}>
               {formatPercent(metrics.ytdReturnPercent, 2)}
             </strong>
-            <small>{settings.periodStartLabel} - {settings.periodEndLabel}</small>
+            <small>{settings.periodStartLabel} - today</small>
           </div>
           <div>
             <span>Net Invested</span>
@@ -1488,8 +1490,8 @@ function App() {
             <span />
           </div>
           <p>
-            Cumulative return, {settings.periodStartLabel} - {settings.periodEndLabel}. Return is
-            based on current book value versus starting book value.
+            Cumulative return through today. Return is based on current book value versus starting
+            book value. Historical chart points require user-maintained performance CSV rows.
           </p>
           <PerformanceChart
             points={portfolio.performance}
@@ -1500,7 +1502,7 @@ function App() {
           <div className="chart-captions">
             <span>{settings.periodStartLabel} - baseline 0%</span>
             <strong>
-              {settings.periodEndLabel} -{' '}
+              Today -{' '}
               <b className={classNameForReturn(metrics.ytdReturnPercent)}>
                 {formatPercent(metrics.ytdReturnPercent, 2)}
               </b>

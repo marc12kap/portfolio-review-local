@@ -80,6 +80,7 @@ async function seedDemoDataFiles({ overwrite = false } = {}) {
   } catch {
     // Demo logos are optional; missing logos can still be fetched and cached on demand.
   }
+  await refreshLocalSettingsReportingDates()
   await writePortfolioSource('demo')
   await writeSchemaMetadata(dataDir, {
     migrations: [
@@ -92,12 +93,35 @@ async function seedDemoDataFiles({ overwrite = false } = {}) {
   })
 }
 
+async function refreshLocalSettingsReportingDates(baseDir = dataDir) {
+  const filePath = join(baseDir, 'settings.json')
+  if (!(await pathExists(filePath))) return
+
+  const settings = JSON.parse(await readFile(filePath, 'utf8'))
+  await writeFile(
+    filePath,
+    `${JSON.stringify({ ...settings, ...normalizeReportingDates(settings) }, null, 2)}\n`,
+  )
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
 function yearStartIso() {
   return `${todayIso().slice(0, 4)}-01-01`
+}
+
+function normalizeReportingDates(settings, today = todayIso()) {
+  const todayValue = formatIsoDate(today)
+  const yearStart = `${todayValue.slice(0, 4)}-01-01`
+  const periodStart = formatIsoDate(settings?.periodStart) || yearStart
+
+  return {
+    asOfDate: todayValue,
+    periodStart: periodStart > todayValue ? yearStart : periodStart,
+    periodEnd: todayValue,
+  }
 }
 
 function defaultSettings() {
@@ -780,13 +804,14 @@ async function fetchLogo(position) {
 async function readSettings() {
   const raw = await readFile(join(dataDir, 'settings.json'), 'utf8')
   const settings = JSON.parse(raw)
+  const reportingDates = normalizeReportingDates(settings)
   return {
     accountName: settings.accountName || 'Personal Portfolio Book',
     benchmarkName: settings.benchmarkName || 'S&P 500',
     benchmarkTicker: cleanBenchmarkTicker(settings.benchmarkTicker),
-    asOfDate: formatIsoDate(settings.asOfDate),
-    periodStart: formatIsoDate(settings.periodStart),
-    periodEnd: formatIsoDate(settings.periodEnd),
+    asOfDate: reportingDates.asOfDate,
+    periodStart: reportingDates.periodStart,
+    periodEnd: reportingDates.periodEnd,
     accountTotal: toNumber(settings.accountTotal),
     cashBalance: hasNumericValue(settings.cashBalance) ? toNumber(settings.cashBalance) : null,
     baselineInvested: toNumber(settings.baselineInvested),
@@ -837,6 +862,39 @@ async function readPerformance(settings) {
     { date: settings.periodStart, returnPct: 0, benchmarkReturnPct: null },
     { date: settings.periodEnd || settings.asOfDate, returnPct: 0, benchmarkReturnPct: null },
   ]
+}
+
+function normalizePerformanceForReport(points, settings) {
+  const periodStart = settings.periodStart || yearStartIso()
+  const periodEnd = settings.periodEnd || settings.asOfDate || todayIso()
+  const sourcePoints = Array.isArray(points) ? points.filter((point) => point?.date) : []
+
+  if (sourcePoints.length === 0) {
+    return [
+      { date: periodStart, returnPct: 0, benchmarkReturnPct: null },
+      { date: periodEnd, returnPct: 0, benchmarkReturnPct: null },
+    ]
+  }
+
+  const normalized = sourcePoints.map((point) => ({
+    ...point,
+    date: formatIsoDate(point.date),
+  }))
+
+  if (!normalized.some((point) => point.date === periodStart)) {
+    normalized.unshift({ date: periodStart, returnPct: 0, benchmarkReturnPct: null })
+  }
+
+  const lastPoint = normalized.at(-1)
+  if (lastPoint?.date !== periodEnd) {
+    normalized.push({
+      date: periodEnd,
+      returnPct: lastPoint?.returnPct || 0,
+      benchmarkReturnPct: lastPoint?.benchmarkReturnPct ?? null,
+    })
+  }
+
+  return normalized
 }
 
 async function fetchYahooChartPrices(tickers) {
@@ -1143,10 +1201,8 @@ async function buildPortfolio() {
   const prices = await fetchPrices(tickers)
   const basePerformance = await readPerformance(settings)
   const consolidated = consolidatePositions(positions, prices, settings)
-  const performance = basePerformance.map((point, index) =>
-    index === basePerformance.length - 1
-      ? { ...point, returnPct: consolidated.metrics.ytdReturnPercent }
-      : point,
+  const performance = normalizePerformanceForReport(basePerformance, settings).map((point, index, points) =>
+    index === points.length - 1 ? { ...point, returnPct: consolidated.metrics.ytdReturnPercent } : point,
   )
   return {
     settings: {
@@ -1172,12 +1228,10 @@ async function saveSettings(payload) {
   validateSettings(payload)
   await backupLocalDataFile('settings.json')
   const next = {
+    ...normalizeReportingDates(payload),
     accountName: payload.accountName || 'Personal Portfolio Book',
     benchmarkName: payload.benchmarkName || 'S&P 500',
     benchmarkTicker: cleanBenchmarkTicker(payload.benchmarkTicker),
-    asOfDate: formatIsoDate(payload.asOfDate),
-    periodStart: formatIsoDate(payload.periodStart),
-    periodEnd: formatIsoDate(payload.periodEnd),
     accountTotal: toNumber(payload.accountTotal),
     cashBalance: hasNumericValue(payload.cashBalance) ? toNumber(payload.cashBalance) : null,
     baselineInvested: toNumber(payload.baselineInvested),
@@ -1206,12 +1260,10 @@ async function savePortfolio(payload) {
   await backupLocalDataFile('settings.json')
   await backupLocalDataFile('positions.csv')
   const nextSettings = {
+    ...normalizeReportingDates(settings),
     accountName: settings.accountName || 'Personal Portfolio Book',
     benchmarkName: settings.benchmarkName || 'S&P 500',
     benchmarkTicker: cleanBenchmarkTicker(settings.benchmarkTicker),
-    asOfDate: formatIsoDate(settings.asOfDate),
-    periodStart: formatIsoDate(settings.periodStart),
-    periodEnd: formatIsoDate(settings.periodEnd),
     accountTotal: toNumber(settings.accountTotal),
     cashBalance: hasNumericValue(settings.cashBalance) ? toNumber(settings.cashBalance) : null,
     baselineInvested: toNumber(settings.baselineInvested),
@@ -1358,6 +1410,8 @@ export {
   consolidatePositions,
   inferStructure,
   migrateLocalDataFiles,
+  normalizePerformanceForReport,
+  normalizeReportingDates,
   validatePositions,
   validateSettings,
 }
