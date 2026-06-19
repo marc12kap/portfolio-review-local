@@ -1,9 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import { mkdtemp, readFile, stat, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import {
   cleanBenchmarkTicker,
   consolidatePositions,
   inferStructure,
+  migrateLocalDataFiles,
   validatePositions,
   validateSettings,
 } from '../server.mjs'
@@ -431,5 +435,96 @@ describe('benchmark settings', () => {
     assert.equal(cleanBenchmarkTicker(''), 'SPY')
     assert.equal(cleanBenchmarkTicker(undefined), 'SPY')
     assert.equal(cleanBenchmarkTicker(' voo '), 'VOO')
+  })
+})
+
+async function tempDataDir() {
+  return mkdtemp(join(tmpdir(), 'portfolio-review-migration-'))
+}
+
+async function pathExists(filePath) {
+  try {
+    await stat(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
+
+describe('local data migrations', () => {
+  it('adds missing positions CSV columns without dropping user columns', async () => {
+    const dir = await tempDataDir()
+    await writeFile(
+      join(dir, 'positions.csv'),
+      'ticker,company,quantity,customNote\nAAPL,Apple,10,keep me\n',
+    )
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({
+        accountName: 'Old Book',
+        asOfDate: '2026-06-18',
+        periodStart: '2026-01-01',
+        periodEnd: '2026-06-18',
+        accountTotal: 1000,
+        baselineInvested: 900,
+      }),
+    )
+    await writeFile(join(dir, 'performance.csv'), 'date,returnPct\n2026-01-01,0\n')
+
+    const result = await migrateLocalDataFiles(dir)
+    const migratedPositions = await readFile(join(dir, 'positions.csv'), 'utf8')
+
+    assert.equal(result.version, 1)
+    assert.match(migratedPositions.split('\n')[0], /customNote/)
+    assert.match(migratedPositions.split('\n')[0], /logoUrl/)
+    assert.match(migratedPositions, /keep me/)
+    assert.equal(await pathExists(join(dir, 'backups')), true)
+  })
+
+  it('adds missing settings fields and records schema metadata', async () => {
+    const dir = await tempDataDir()
+    await writeFile(join(dir, 'positions.csv'), 'ticker,quantity\nIBM,3\n')
+    await writeFile(join(dir, 'performance.csv'), 'date,returnPct\n2026-01-01,0\n')
+    await writeFile(
+      join(dir, 'settings.json'),
+      JSON.stringify({
+        accountName: 'Legacy Portfolio',
+        asOfDate: '2026-06-18',
+        periodStart: '2026-01-01',
+        periodEnd: '2026-06-18',
+        accountTotal: 1000,
+        baselineInvested: 800,
+      }),
+    )
+
+    await migrateLocalDataFiles(dir)
+    const settings = JSON.parse(await readFile(join(dir, 'settings.json'), 'utf8'))
+    const schema = JSON.parse(await readFile(join(dir, 'schema.json'), 'utf8'))
+
+    assert.equal(settings.benchmarkName, 'S&P 500')
+    assert.equal(settings.benchmarkTicker, 'SPY')
+    assert.equal(settings.cashBalance, null)
+    assert.equal(schema.version, 1)
+    assert.equal(schema.migrations.length, 1)
+  })
+
+  it('fails invalid settings migrations without writing schema metadata', async () => {
+    const dir = await tempDataDir()
+    await writeFile(join(dir, 'positions.csv'), 'ticker,quantity\nIBM,3\n')
+    await writeFile(join(dir, 'performance.csv'), 'date,returnPct\n2026-01-01,0\n')
+    await writeFile(join(dir, 'settings.json'), '{not valid json')
+
+    await assert.rejects(
+      () => migrateLocalDataFiles(dir),
+      (error) => {
+        assert.equal(error.statusCode, 400)
+        assert.deepEqual(error.validationErrors, [
+          'settings.json is not valid JSON. Restore a file from data/backups or fix the JSON syntax, then restart the app.',
+        ])
+        return true
+      },
+    )
+
+    assert.equal(await pathExists(join(dir, 'schema.json')), false)
   })
 })

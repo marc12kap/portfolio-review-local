@@ -8,12 +8,12 @@ const root = fileURLToPath(new URL('.', import.meta.url))
 const dataDir = join(root, 'data')
 const demoDataDir = join(root, 'demo-data', 'sample')
 const logoDir = join(dataDir, 'logos')
-const backupDir = join(dataDir, 'backups')
 const priceCacheFile = join(dataDir, 'price-cache.json')
 const sourceFile = join(dataDir, 'source.json')
 const demoLogoDir = join(demoDataDir, 'logos')
 const distDir = join(root, 'dist')
 const port = Number(process.env.PORT || 8787)
+const currentSchemaVersion = 1
 const priceCache = new Map()
 const isMainModule = process.argv[1] ? import.meta.url === pathToFileURL(process.argv[1]).href : false
 
@@ -81,6 +81,15 @@ async function seedDemoDataFiles({ overwrite = false } = {}) {
     // Demo logos are optional; missing logos can still be fetched and cached on demand.
   }
   await writePortfolioSource('demo')
+  await writeSchemaMetadata(dataDir, {
+    migrations: [
+      {
+        version: currentSchemaVersion,
+        appliedAt: new Date().toISOString(),
+        changes: ['Seeded demo data with current schema.'],
+      },
+    ],
+  })
 }
 
 function todayIso() {
@@ -116,6 +125,15 @@ async function writeBlankDataFiles() {
       `date,returnPct,benchmarkReturnPct\n${settings.periodStart},0,\n${settings.periodEnd},0,\n`,
     ),
   ])
+  await writeSchemaMetadata(dataDir, {
+    migrations: [
+      {
+        version: currentSchemaVersion,
+        appliedAt: new Date().toISOString(),
+        changes: ['Created blank local data with current schema.'],
+      },
+    ],
+  })
 }
 
 async function writePortfolioSource(kind) {
@@ -177,13 +195,18 @@ function backupTimestamp() {
 }
 
 async function backupLocalDataFile(fileName) {
-  const sourcePath = join(dataDir, fileName)
+  return backupLocalDataFileIn(dataDir, fileName)
+}
+
+async function backupLocalDataFileIn(baseDir, fileName) {
+  const sourcePath = join(baseDir, fileName)
   if (!(await pathExists(sourcePath))) return
 
-  await mkdir(backupDir, { recursive: true })
+  const targetBackupDir = join(baseDir, 'backups')
+  await mkdir(targetBackupDir, { recursive: true })
   const extension = extname(fileName)
   const baseName = fileName.slice(0, -extension.length)
-  await copyFile(sourcePath, join(backupDir, `${baseName}-${backupTimestamp()}${extension}`))
+  await copyFile(sourcePath, join(targetBackupDir, `${baseName}-${backupTimestamp()}${extension}`))
 }
 
 async function backupLocalDataFiles() {
@@ -192,6 +215,7 @@ async function backupLocalDataFiles() {
     backupLocalDataFile('positions.csv'),
     backupLocalDataFile('performance.csv'),
     backupLocalDataFile('source.json'),
+    backupLocalDataFile('schema.json'),
   ])
 }
 
@@ -248,6 +272,10 @@ function readBody(request) {
 }
 
 function parseCsv(text) {
+  return parseCsvDocument(text).rows
+}
+
+function parseCsvDocument(text) {
   const rows = []
   let field = ''
   let row = []
@@ -280,9 +308,12 @@ function parseCsv(text) {
   if (row.some((value) => value.trim() !== '')) rows.push(row)
 
   const [headers = [], ...records] = rows
-  return records.map((record) =>
-    Object.fromEntries(headers.map((header, index) => [header, record[index] ?? ''])),
-  )
+  return {
+    headers,
+    rows: records.map((record) =>
+      Object.fromEntries(headers.map((header, index) => [header, record[index] ?? ''])),
+    ),
+  }
 }
 
 function escapeCsvValue(value) {
@@ -291,7 +322,17 @@ function escapeCsvValue(value) {
 }
 
 function toCsv(rows) {
-  const headers = [
+  return toCsvWithHeaders(rows, positionCsvHeaders)
+}
+
+function toCsvWithHeaders(rows, headers) {
+  return [
+    headers.join(','),
+    ...rows.map((row) => headers.map((header) => escapeCsvValue(row[header])).join(',')),
+  ].join('\n')
+}
+
+const positionCsvHeaders = [
     'id',
     'ticker',
     'company',
@@ -310,10 +351,133 @@ function toCsv(rows) {
     'structure',
     'logoUrl',
   ]
-  return [
-    headers.join(','),
-    ...rows.map((row) => headers.map((header) => escapeCsvValue(row[header])).join(',')),
-  ].join('\n')
+
+const performanceCsvHeaders = ['date', 'returnPct', 'benchmarkReturnPct']
+
+const requiredSettingsDefaults = {
+  accountName: 'Personal Portfolio Book',
+  benchmarkName: 'S&P 500',
+  benchmarkTicker: 'SPY',
+  asOfDate: todayIso,
+  periodStart: yearStartIso,
+  periodEnd: todayIso,
+  accountTotal: 0,
+  cashBalance: null,
+  baselineInvested: 0,
+}
+
+function resolveDefaultValue(value) {
+  return typeof value === 'function' ? value() : value
+}
+
+async function readSchemaMetadata(baseDir = dataDir) {
+  try {
+    const raw = await readFile(join(baseDir, 'schema.json'), 'utf8')
+    const parsed = JSON.parse(raw)
+    return {
+      version: Number.isInteger(parsed?.version) ? parsed.version : 0,
+      migrations: Array.isArray(parsed?.migrations) ? parsed.migrations : [],
+    }
+  } catch {
+    return { version: 0, migrations: [] }
+  }
+}
+
+async function writeSchemaMetadata(baseDir, metadata) {
+  await writeFile(
+    join(baseDir, 'schema.json'),
+    `${JSON.stringify(
+      {
+        version: currentSchemaVersion,
+        updatedAt: new Date().toISOString(),
+        migrations: metadata.migrations,
+      },
+      null,
+      2,
+    )}\n`,
+  )
+}
+
+function missingColumns(headers, requiredHeaders) {
+  const headerSet = new Set(headers)
+  return requiredHeaders.filter((header) => !headerSet.has(header))
+}
+
+async function migrateCsvColumns(baseDir, fileName, requiredHeaders) {
+  const filePath = join(baseDir, fileName)
+  if (!(await pathExists(filePath))) return null
+
+  const raw = await readFile(filePath, 'utf8')
+  const document = parseCsvDocument(raw)
+  const missing = missingColumns(document.headers, requiredHeaders)
+  if (missing.length === 0) return null
+
+  await backupLocalDataFileIn(baseDir, fileName)
+  const nextHeaders = [...document.headers, ...missing]
+  await writeFile(filePath, `${toCsvWithHeaders(document.rows, nextHeaders)}\n`)
+  return `Added ${missing.join(', ')} to ${fileName}.`
+}
+
+async function migrateSettings(baseDir) {
+  const filePath = join(baseDir, 'settings.json')
+  if (!(await pathExists(filePath))) return null
+
+  let settings
+  try {
+    settings = JSON.parse(await readFile(filePath, 'utf8'))
+  } catch {
+    throw validationError('Local data migration failed.', [
+      'settings.json is not valid JSON. Restore a file from data/backups or fix the JSON syntax, then restart the app.',
+    ])
+  }
+
+  const missing = Object.entries(requiredSettingsDefaults).filter(([key]) => settings[key] === undefined)
+  if (missing.length === 0) return null
+
+  await backupLocalDataFileIn(baseDir, 'settings.json')
+  const nextSettings = {
+    ...Object.fromEntries(missing.map(([key, value]) => [key, resolveDefaultValue(value)])),
+    ...settings,
+  }
+  await writeFile(filePath, `${JSON.stringify(nextSettings, null, 2)}\n`)
+  return `Added ${missing.map(([key]) => key).join(', ')} to settings.json.`
+}
+
+async function migrateLocalDataFiles(baseDir = dataDir) {
+  await mkdir(baseDir, { recursive: true })
+  const hasPortfolioFiles = await Promise.all(
+    ['settings.json', 'positions.csv', 'performance.csv'].map((fileName) => pathExists(join(baseDir, fileName))),
+  )
+  if (!hasPortfolioFiles.some(Boolean)) return { version: currentSchemaVersion, changes: [] }
+
+  const metadata = await readSchemaMetadata(baseDir)
+  const changes = []
+
+  for (const migration of [
+    () => migrateSettings(baseDir),
+    () => migrateCsvColumns(baseDir, 'positions.csv', positionCsvHeaders),
+    () => migrateCsvColumns(baseDir, 'performance.csv', performanceCsvHeaders),
+  ]) {
+    const change = await migration()
+    if (change) changes.push(change)
+  }
+
+  if (metadata.version < currentSchemaVersion || changes.length > 0) {
+    const migrationRecord = {
+      version: currentSchemaVersion,
+      appliedAt: new Date().toISOString(),
+      changes: changes.length > 0 ? changes : ['Recorded current local data schema version.'],
+    }
+    await writeSchemaMetadata(baseDir, {
+      ...metadata,
+      migrations: [...metadata.migrations, migrationRecord],
+    })
+    if (changes.length > 0) {
+      console.log(`Local data migration complete: ${changes.join(' ')}`)
+    }
+  }
+
+  return { version: currentSchemaVersion, changes }
 }
 
 function toNumber(value, fallback = 0) {
@@ -972,6 +1136,7 @@ async function buildPortfolio() {
   if (!(await hasLocalPortfolioData())) {
     return { setupRequired: true }
   }
+  const schema = await migrateLocalDataFiles()
   const [settings, positions] = await Promise.all([readSettings(), readPositions()])
   const source = await readPortfolioSource(settings)
   const tickers = positions.map((position) => position.underlying || position.ticker)
@@ -996,12 +1161,14 @@ async function buildPortfolio() {
     performance,
     prices,
     source,
+    schema,
     ...consolidated,
   }
 }
 
 async function saveSettings(payload) {
   await ensureLocalDataDirectories()
+  await migrateLocalDataFiles()
   validateSettings(payload)
   await backupLocalDataFile('settings.json')
   const next = {
@@ -1021,6 +1188,7 @@ async function saveSettings(payload) {
 
 async function savePositions(positions) {
   await ensureLocalDataDirectories()
+  await migrateLocalDataFiles()
   validatePositions(positions)
   await backupLocalDataFile('positions.csv')
   const rows = Array.isArray(positions) ? positions.map(normalizePositionForSave) : []
@@ -1030,6 +1198,7 @@ async function savePositions(positions) {
 
 async function savePortfolio(payload) {
   await ensureLocalDataDirectories()
+  await migrateLocalDataFiles()
   const settings = payload?.settings || {}
   const positions = payload?.positions
   validateSettings(settings)
@@ -1130,6 +1299,7 @@ const server = createServer(async (request, response) => {
         sendJson(response, 404, { error: 'Local portfolio data has not been set up yet.' })
         return
       }
+      await migrateLocalDataFiles()
       const raw = await readFile(join(dataDir, 'positions.csv'), 'utf8')
       response.writeHead(200, {
         'content-type': 'text/csv; charset=utf-8',
@@ -1145,6 +1315,7 @@ const server = createServer(async (request, response) => {
         sendJson(response, 404, { error: 'Local portfolio data has not been set up yet.' })
         return
       }
+      await migrateLocalDataFiles()
       const ticker = normalizeLogoTicker(decodeURIComponent(logoMatch[1]))
       const positions = await readPositions()
       const position = positions.find((row) => row.underlying === ticker || row.ticker === ticker)
@@ -1182,10 +1353,18 @@ const server = createServer(async (request, response) => {
   }
 })
 
-export { cleanBenchmarkTicker, consolidatePositions, inferStructure, validatePositions, validateSettings }
+export {
+  cleanBenchmarkTicker,
+  consolidatePositions,
+  inferStructure,
+  migrateLocalDataFiles,
+  validatePositions,
+  validateSettings,
+}
 
 if (isMainModule) {
   await ensureLocalDataDirectories()
+  if (await hasLocalPortfolioData()) await migrateLocalDataFiles()
 
   server.listen(port, '127.0.0.1', () => {
     console.log(`Portfolio Review is running at http://127.0.0.1:${port}`)
