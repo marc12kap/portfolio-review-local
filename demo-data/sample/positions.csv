@@ -1,15 +1,19 @@
 id,ticker,company,underlying,assetType,side,quantity,averageCost,multiplier,marketValue,optionType,strikePrice,expiryDate,premium,sector,structure,logoUrl
-1,SNDK,SanDisk,SNDK,stock,long,,,,22100,,,,,Memory & Storage,Common shares,https://logo.clearbit.com/sandisk.com
-2,MU,Micron Technology,MU,stock,long,,,,12500,,,,,Memory & Storage,Shares with long call overlay,https://logo.clearbit.com/micron.com
-3,NBIS,Nebius Group,NBIS,stock,long,,,,17400,,,,,Datacenter & AI Infrastructure,Common shares,https://logo.clearbit.com/nebius.com
-4,FIX,Comfort Systems USA,FIX,stock,long,,,,9900,,,,,Datacenter & AI Infrastructure,Shares with covered-call hedge,https://logo.clearbit.com/comfortsystemsusa.com
-5,LITE,Lumentum,LITE,stock,long,,,,8150,,,,,Semiconductors & Photonics,Common shares,https://logo.clearbit.com/lumentum.com
-6,AXTI,AXT Inc,AXTI,stock,long,,,,6650,,,,,Semiconductors & Photonics,Shares with covered-call hedge,https://logo.clearbit.com/axt.com
-7,POWI,Power Integrations,POWI,option,long,,,,1400,call,,,,Semiconductors & Photonics,Long call position,https://logo.clearbit.com/power.com
-8,AAOI,Applied Optoelectronics,AAOI,option,long,,,,100,call,,2026-06-18,,Semiconductors & Photonics,Long call position (6/18 expiry),https://logo.clearbit.com/ao-inc.com
-9,FLNC,Fluence Energy,FLNC,stock,long,,,,7300,,,,,Power & Energy Storage,Shares with long call overlay,https://logo.clearbit.com/fluenceenergy.com
-10,FPS,First Phosphate,FPS,stock,long,,,,2200,,,,,Power & Energy Storage,Common shares,https://logo.clearbit.com/firstphosphate.com
-11,BE,Bloom Energy,BE,stock,long,,,,1900,,,,,Power & Energy Storage,Common shares,https://logo.clearbit.com/bloomenergy.com
-12,SEDG,SolarEdge,SEDG,option,long,,,,1200,call,,,,Power & Energy Storage,Long call position,https://logo.clearbit.com/solaredge.com
-13,RKLB,Rocket Lab,RKLB,stock,long,,,,8100,,,,,Space & Defense,Shares with covered-call hedge,https://logo.clearbit.com/rocketlabusa.com
-14,NAK,Northern Dynasty Minerals,NAK,option,long,,,,700,call,,,,Mining & Materials,Long call spread,https://logo.clearbit.com/northerndynastyminerals.com
+1,SPY,SPDR S&P 500 ETF Trust,SPY,stock,long,180,505,,108000,,,,,Broad Market ETFs,Core S&P 500 ETF,https://logo.clearbit.com/ssga.com
+2,VOO,Vanguard S&P 500 ETF,VOO,stock,long,165,468,,85500,,,,,Broad Market ETFs,Low-cost S&P 500 ETF,https://logo.clearbit.com/vanguard.com
+3,AAPL,Apple Inc.,AAPL,stock,long,450,182,,93000,,,,,Mega-Cap Technology,Common shares,https://logo.clearbit.com/apple.com
+4,MSFT,Microsoft Corporation,MSFT,stock,long,220,406,,99000,,,,,Mega-Cap Technology,Common shares,https://logo.clearbit.com/microsoft.com
+5,NVDA,NVIDIA Corporation,NVDA,stock,long,520,112,,72000,,,,,AI & Semiconductors,Common shares,https://logo.clearbit.com/nvidia.com
+6,META,Meta Platforms Inc.,META,stock,long,140,475,,81000,,,,,Mega-Cap Technology,Common shares,https://logo.clearbit.com/meta.com
+7,GOOGL,Alphabet Inc.,GOOGL,stock,long,360,151,,62000,,,,,Mega-Cap Technology,Common shares,https://logo.clearbit.com/abc.xyz
+8,AMZN,Amazon.com Inc.,AMZN,stock,long,300,173,,59000,,,,,Consumer & Cloud Platforms,Common shares,https://logo.clearbit.com/amazon.com
+9,TSLA,Tesla Inc.,TSLA,stock,long,210,220,,54000,,,,,Consumer Discretionary,Common shares with long call overlay,https://logo.clearbit.com/tesla.com
+10,IBM,International Business Machines,IBM,stock,long,260,183,,50000,,,,,Enterprise Technology,Dividend technology holding,https://logo.clearbit.com/ibm.com
+11,DELL,Dell Technologies Inc.,DELL,stock,long,360,116,,46000,,,,,Enterprise Technology,AI infrastructure hardware,https://logo.clearbit.com/dell.com
+12,JPM,JPMorgan Chase & Co.,JPM,stock,long,250,196,,55000,,,,,Financials,Large-cap bank,https://logo.clearbit.com/jpmorganchase.com
+13,COST,Costco Wholesale Corporation,COST,stock,long,55,810,,50000,,,,,Consumer Staples,Defensive compounder,https://logo.clearbit.com/costco.com
+14,XOM,Exxon Mobil Corporation,XOM,stock,long,420,108,,47000,,,,,Energy,Energy allocation,https://logo.clearbit.com/exxonmobil.com
+15,SPCX,SPAC and New Issue ETF,SPCX,stock,long,,24,,22500,,,,,Satellite & Thematic ETFs,Small thematic satellite ETF,https://logo.clearbit.com/axs.com
+16,BRK.B,Berkshire Hathaway Inc.,BRK.B,stock,long,120,410,,52000,,,,,Diversified Holdings,Long-term compounder,https://logo.clearbit.com/berkshirehathaway.com
+17,TSLA 270115C00300000,Tesla Jan 2027 300 Call,TSLA,option,long,,60,100,12000,call,300,2027-01-15,60,Consumer Discretionary,Long call overlay,https://logo.clearbit.com/tesla.com
+18,AAPL 260619C00240000,Apple Jun 2026 240 Covered Call,AAPL,option,short,,15,100,-4500,call,240,2026-06-19,15,Mega-Cap Technology,Covered-call hedge,https://logo.clearbit.com/apple.com
