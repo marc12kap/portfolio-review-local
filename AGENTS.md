@@ -39,6 +39,24 @@ http://127.0.0.1:8787
 
 `npm run local` installs dependencies, builds the frontend, and starts the local server.
 
+## Help A User Replace Demo Data
+
+The expected first-time workflow is:
+
+1. Let the user tour the seeded demo portfolio first.
+2. When they are ready to build their own portfolio, have them open `Edit Positions`.
+3. In `Reset local files`, use `Start Blank` to clear demo rows. This creates timestamped backups
+   before replacing local files.
+4. Help them add real holdings manually in the editor or convert their existing data into
+   `positions.csv`.
+5. Make sure each row has a useful `sector` or theme bucket so the allocation views work well.
+6. Confirm available cash, beginning book value, performance history, and price badges before they
+   rely on the report.
+
+If the user asks for AI-assisted seeding, ask them to paste or attach non-sensitive holdings data
+such as ticker, company, shares/contracts, average cost, market value if known, sector/theme, option
+type, strike, expiry, and premium. Do not ask for brokerage passwords or account logins.
+
 ## If Node Or npm Is Missing
 
 Help the user install Node.js LTS, then retry.
