@@ -144,6 +144,56 @@ describe('consolidatePositions', () => {
     assert.equal(holding.value, 2_000)
     assert.equal(holding.weight, 66.66666666666666)
     assert.equal(holding.structure, 'Long call spread')
+    assert.deepEqual(result.optionExposures, [
+      {
+        ticker: 'ABC',
+        value: 2_000,
+        weight: 66.66666666666666,
+        legCount: 2,
+        callCount: 2,
+        putCount: 0,
+        spreadCount: 2,
+        netContracts: 1,
+        expirations: [],
+      },
+    ])
+  })
+
+  it('summarizes option exposure by underlying with expirations and short legs', () => {
+    const result = consolidatePositions(
+      [
+        position({ assetType: 'stock', quantity: '100' }),
+        position({
+          assetType: 'option',
+          optionType: 'call',
+          quantity: '1',
+          expiryDate: '2026-12-18',
+        }),
+        position({
+          assetType: 'option',
+          optionType: 'put',
+          side: 'short',
+          quantity: '0.5',
+          expiryDate: '2026-09-18',
+        }),
+      ],
+      prices,
+      settings({ accountTotal: 5_000, baselineInvested: 5_000 }),
+    )
+
+    assert.deepEqual(result.optionExposures, [
+      {
+        ticker: 'ABC',
+        value: 1_000,
+        weight: 20,
+        legCount: 2,
+        callCount: 1,
+        putCount: 1,
+        spreadCount: 0,
+        netContracts: 0.5,
+        expirations: ['2026-09-18', '2026-12-18'],
+      },
+    ])
   })
 
   it('falls back to invested value as account total when settings account total is missing', () => {
