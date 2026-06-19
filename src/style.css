@@ -948,6 +948,12 @@ a {
   color: #2f725f;
 }
 
+.price-status.cached {
+  border-color: #c8d2e1;
+  background: #f1f5fa;
+  color: #486582;
+}
+
 .price-status.fallback {
   border-color: #dcc7a9;
   background: #fbf5eb;

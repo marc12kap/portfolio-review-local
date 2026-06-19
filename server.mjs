@@ -9,6 +9,7 @@ const dataDir = join(root, 'data')
 const demoDataDir = join(root, 'demo-data', 'sample')
 const logoDir = join(dataDir, 'logos')
 const backupDir = join(dataDir, 'backups')
+const priceCacheFile = join(dataDir, 'price-cache.json')
 const demoLogoDir = join(demoDataDir, 'logos')
 const distDir = join(root, 'dist')
 const port = Number(process.env.PORT || 8787)
@@ -173,6 +174,8 @@ async function resetPortfolioData(payload) {
   await ensureLocalDataDirectories()
   await backupLocalDataFiles()
   await rm(logoDir, { recursive: true, force: true })
+  await rm(priceCacheFile, { force: true })
+  priceCache.clear()
   await mkdir(logoDir, { recursive: true })
 
   if (mode === 'demo') {
@@ -294,6 +297,58 @@ function roundCurrency(value) {
 function hasNumericValue(value) {
   if (value === null || value === undefined || value === '') return false
   return Number.isFinite(Number(String(value).replace(/[$,%\s,]/g, '')))
+}
+
+function normalizePriceRecord(record, status = 'cached') {
+  const price = toNumber(record?.price)
+  if (price <= 0) return null
+  return {
+    price,
+    source: record?.source || 'Last known price',
+    fetchedAt: toNumber(record?.fetchedAt, Date.now()),
+    status,
+  }
+}
+
+async function readLastKnownPriceCache(tickers = []) {
+  try {
+    const raw = await readFile(priceCacheFile, 'utf8')
+    const parsed = JSON.parse(raw)
+    const requested = new Set(tickers.map(cleanTicker).filter(Boolean))
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .filter(([ticker]) => requested.size === 0 || requested.has(cleanTicker(ticker)))
+        .map(([ticker, record]) => [cleanTicker(ticker), normalizePriceRecord(record)])
+        .filter(([, record]) => record),
+    )
+  } catch {
+    return {}
+  }
+}
+
+async function writeLastKnownPriceCache(records) {
+  const liveRecords = Object.entries(records || {})
+    .map(([ticker, record]) => [cleanTicker(ticker), normalizePriceRecord(record, 'live')])
+    .filter(([ticker, record]) => ticker && record)
+
+  if (liveRecords.length === 0) return
+
+  await ensureLocalDataDirectories()
+  const existing = await readLastKnownPriceCache()
+  const next = {
+    ...existing,
+    ...Object.fromEntries(
+      liveRecords.map(([ticker, record]) => [
+        ticker,
+        {
+          price: record.price,
+          source: record.source,
+          fetchedAt: record.fetchedAt,
+        },
+      ]),
+    ),
+  }
+  await writeFile(priceCacheFile, `${JSON.stringify(next, null, 2)}\n`)
 }
 
 function normalizeNumericValue(value) {
@@ -657,16 +712,24 @@ async function fetchStooqPrices(tickers) {
 
 async function fetchPrices(tickers) {
   const uniqueTickers = [...new Set(tickers.map(cleanTicker).filter(Boolean))]
+  if (uniqueTickers.length === 0) return {}
+
+  async function withCachedFallback(livePrices, errorMessage = '') {
+    await writeLastKnownPriceCache(livePrices)
+    const missing = uniqueTickers.filter((ticker) => !livePrices[ticker])
+    const cached = await readLastKnownPriceCache(missing)
+    return Object.assign({ ...livePrices, ...cached }, errorMessage ? { _error: errorMessage } : {})
+  }
+
   try {
     const yahoo = await fetchYahooChartPrices(uniqueTickers)
     const missing = uniqueTickers.filter((ticker) => !yahoo[ticker])
-    if (missing.length === 0) return yahoo
-    return { ...yahoo, ...(await fetchStooqPrices(missing)) }
+    if (missing.length === 0) return withCachedFallback(yahoo)
+    const stooq = await fetchStooqPrices(missing)
+    return withCachedFallback({ ...yahoo, ...stooq })
   } catch (error) {
     const stooq = await fetchStooqPrices(uniqueTickers)
-    return Object.assign(stooq, {
-      _error: error instanceof Error ? error.message : 'Price fetch failed.',
-    })
+    return withCachedFallback(stooq, error instanceof Error ? error.message : 'Price fetch failed.')
   }
 }
 
@@ -759,8 +822,8 @@ function consolidatePositions(positions, prices, settings) {
     if (!item.logoUrl && position.logoUrl) item.logoUrl = position.logoUrl
     if (!item.structure && position.structure) item.structure = position.structure
     if (usesLivePrice) {
-      item.priceStatus = 'live'
-    } else if (hasFallbackMarketValue && item.priceStatus !== 'live') {
+      item.priceStatus = priceRecord?.status === 'cached' ? 'cached' : 'live'
+    } else if (hasFallbackMarketValue && !['live', 'cached'].includes(item.priceStatus)) {
       item.priceStatus = 'fallback'
     }
 

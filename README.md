@@ -151,11 +151,13 @@ defaults to `SPY` when omitted.
 Prices:
 
 - The server first tries public quote endpoints.
-- Successful prices are cached in memory for about 10 minutes.
-- Holdings with quantity use live prices when available.
-- Rows without usable live prices fall back to `marketValue`.
-- Rows with quantity but no live price and no `marketValue` appear in a review panel so you can fix
-  the ticker, add a fallback value, or retry live prices later.
+- Successful prices are cached in memory for about 10 minutes and persisted locally in
+  `data/price-cache.json` as last-known prices.
+- Holdings with quantity use fresh live prices when available.
+- If a fresh price is unavailable, holdings use the last-known local price cache when available.
+- Rows without usable live or cached prices fall back to manual `marketValue`.
+- Rows with quantity but no live price, cached price, or `marketValue` appear in a review panel so
+  you can fix the ticker, add a fallback value, or retry live prices later.
 
 Logos:
 
