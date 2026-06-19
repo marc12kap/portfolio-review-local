@@ -57,6 +57,7 @@ type PerformancePoint = {
 }
 
 type Portfolio = {
+  setupRequired?: false
   settings: Settings
   positions: Position[]
   performance: PerformancePoint[]
@@ -76,6 +77,12 @@ type Portfolio = {
   prices: Record<string, { price: number; source: string; fetchedAt: number }>
 }
 
+type SetupRequiredResponse = {
+  setupRequired: true
+}
+
+type PortfolioResponse = Portfolio | SetupRequiredResponse
+
 type ApiErrorPayload = {
   error?: string
   validationErrors?: string[]
@@ -88,7 +95,21 @@ async function fetchPortfolio() {
     const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
     throw new Error([payload.error || 'The local portfolio API is not running.', details].filter(Boolean).join('\n'))
   }
-  return (await response.json()) as Portfolio
+  return (await response.json()) as PortfolioResponse
+}
+
+async function postSetup(mode: 'demo' | 'blank' | 'import', positionsCsv = '') {
+  const response = await fetch('/api/setup', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ mode, positionsCsv }),
+  })
+  if (!response.ok) {
+    const payload = (await response.json().catch(() => ({}))) as ApiErrorPayload
+    const details = payload.validationErrors?.length ? payload.validationErrors.join('\n') : ''
+    throw new Error([payload.error || 'Unable to set up portfolio.', details].filter(Boolean).join('\n'))
+  }
+  return (await response.json()) as PortfolioResponse
 }
 
 const emptyPosition = (): Position => ({
@@ -617,8 +638,74 @@ function LoadErrorState({ error, onRetry }: { error: string; onRetry: () => void
   )
 }
 
+function FirstRunSetup({ onReady }: { onReady: (portfolio: Portfolio) => void }) {
+  const [positionsCsv, setPositionsCsv] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function setup(mode: 'demo' | 'blank' | 'import') {
+    setSaving(true)
+    setError('')
+    try {
+      const response = await postSetup(mode, positionsCsv)
+      if ('setupRequired' in response && response.setupRequired) {
+        throw new Error('Setup did not finish. Try again or check local file permissions.')
+      }
+      onReady(response)
+    } catch (setupError) {
+      setError(setupError instanceof Error ? setupError.message : 'Setup failed.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <main className="state-screen setup-screen">
+      <h1>Portfolio Review</h1>
+      <div className="setup-panel" aria-label="First-run setup">
+        <div className="setup-heading">
+          <span>Local Setup</span>
+          <strong>Choose how to start</strong>
+        </div>
+        <div className="setup-actions">
+          <button type="button" onClick={() => void setup('demo')} disabled={saving}>
+            Use Demo Data
+          </button>
+          <button type="button" onClick={() => void setup('blank')} disabled={saving}>
+            Start Blank
+          </button>
+        </div>
+        <label className="csv-import">
+          Import positions CSV
+          <textarea
+            value={positionsCsv}
+            onChange={(event) => setPositionsCsv(event.target.value)}
+            placeholder="Paste positions.csv contents here"
+          />
+        </label>
+        <button
+          className="import-button"
+          type="button"
+          onClick={() => void setup('import')}
+          disabled={saving || !positionsCsv.trim()}
+        >
+          Import CSV
+        </button>
+        {error ? (
+          <div className="editor-error setup-error" role="alert">
+            {error.split('\n').map((line) => (
+              <p key={line}>{line}</p>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </main>
+  )
+}
+
 function App() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null)
+  const [setupRequired, setSetupRequired] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editorOpen, setEditorOpen] = useState(false)
@@ -628,7 +715,14 @@ function App() {
     setLoading(true)
     setError('')
     try {
-      setPortfolio(await fetchPortfolio())
+      const nextPortfolio = await fetchPortfolio()
+      if ('setupRequired' in nextPortfolio && nextPortfolio.setupRequired) {
+        setSetupRequired(true)
+        setPortfolio(null)
+      } else {
+        setSetupRequired(false)
+        setPortfolio(nextPortfolio)
+      }
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : 'Unable to load portfolio.')
     } finally {
@@ -642,7 +736,15 @@ function App() {
     async function loadInitialPortfolio() {
       try {
         const nextPortfolio = await fetchPortfolio()
-        if (!canceled) setPortfolio(nextPortfolio)
+        if (!canceled) {
+          if ('setupRequired' in nextPortfolio && nextPortfolio.setupRequired) {
+            setSetupRequired(true)
+            setPortfolio(null)
+          } else {
+            setSetupRequired(false)
+            setPortfolio(nextPortfolio)
+          }
+        }
       } catch (loadError) {
         if (!canceled) {
           setError(loadError instanceof Error ? loadError.message : 'Unable to load portfolio.')
@@ -661,6 +763,17 @@ function App() {
 
   if (loading && !portfolio) {
     return <main className="state-screen">Loading portfolio review...</main>
+  }
+
+  if (setupRequired) {
+    return (
+      <FirstRunSetup
+        onReady={(nextPortfolio) => {
+          setSetupRequired(false)
+          setPortfolio(nextPortfolio)
+        }}
+      />
+    )
   }
 
   if (!portfolio) {

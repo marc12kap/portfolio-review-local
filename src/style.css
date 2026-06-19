@@ -102,6 +102,108 @@ a {
   text-transform: uppercase;
 }
 
+.setup-panel {
+  width: min(680px, calc(100vw - 48px));
+  padding: 20px;
+  border: 1px solid #d8d5ce;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(38, 48, 61, 0.1);
+  text-align: left;
+}
+
+.setup-heading span,
+.csv-import {
+  color: #a27442;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.setup-heading strong {
+  display: block;
+  margin-top: 5px;
+  color: #303846;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.setup-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.setup-actions button,
+.import-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  border: 1px solid #2f725f;
+  border-radius: 4px;
+  background: #2f725f;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.setup-actions button:nth-child(2) {
+  border-color: #cfc9bd;
+  background: #fbfbfa;
+  color: #384252;
+}
+
+.csv-import {
+  display: grid;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.csv-import textarea {
+  width: 100%;
+  min-height: 170px;
+  resize: vertical;
+  border: 1px solid #d8d4cc;
+  border-radius: 4px;
+  background: #fbfbfa;
+  color: #313947;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+  outline: 0;
+  padding: 10px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.csv-import textarea:focus {
+  border-color: #2e8b6d;
+  box-shadow: 0 0 0 3px rgba(46, 139, 109, 0.12);
+}
+
+.import-button {
+  width: 100%;
+  margin-top: 10px;
+}
+
+.setup-actions button:disabled,
+.import-button:disabled {
+  cursor: progress;
+  opacity: 0.6;
+}
+
+.setup-error {
+  margin: 12px 0 0;
+}
+
 .portfolio-page {
   width: 958px;
   min-height: 100vh;
